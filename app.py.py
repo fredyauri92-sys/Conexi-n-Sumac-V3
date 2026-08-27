@@ -98,12 +98,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- ENCABEZADO INTEGRADO PREMIUM (LOGO "YAURI CLOUD" MINI AL 40% EN LA ESQUINA SUPERIOR IZQUIERDA) ---
-# Hemos modificado las columnas a [0.45, 3.55] para dar un espacio perfecto al logo de 64 píxeles (40% de escala)
 col_logo, col_titulo = st.columns([0.45, 3.55])
 
 with col_logo:
     try:
-        # Se carga el logotipo a un ancho de 64 píxeles (scale 40%)
+        # Se carga el logotipo de Yauri Cloud a un ancho de 64 píxeles (scale 40%)
         if os.path.exists("yauri_cloud_logo_final.png"):
             st.image("yauri_cloud_logo_final.png", width=64)
         elif os.path.exists("yauri_cloud_logo_rectangular.png"):
@@ -115,7 +114,6 @@ with col_logo:
 
 with col_titulo:
     st.markdown("<h2 style='color: #FFFFFF; margin: 0; padding-top: 2px; font-size: 21px; line-height: 1.1;'>🍜 CALDERÍA SUMAC</h2>", unsafe_allow_html=True)
-    # Helios: Se eliminó el texto "Powered by Yauri Cloud" manteniendo únicamente la ubicación y el rayo ⚡
     st.markdown("<p style='color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-top: 1px;'>📍 Sicuani, Canchis • ⚡</p>", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
@@ -322,7 +320,7 @@ with tab_ventas:
                                 st.session_state[f"huevos_extra_{i+1}"] += 1
                                 st.rerun()
 
-    st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno:</h5>", unsafe_allow_html=True)
+    st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno (Lista de registro):</h5>", unsafe_allow_html=True)
     
     movimientos = []
     for v in datos["ventas"]:
@@ -332,11 +330,12 @@ with tab_ventas:
         
     if movimientos:
         try:
-            # Ordenar por fecha de más reciente a más antiguo
-            movimientos.sort(key=lambda x: x, reverse=True)
+            # Ordenar por fecha y hora de más reciente a más antiguo
+            movimientos.sort(key=lambda x: x[0], reverse=True)
         except:
             pass
-        for fecha, detalle, monto in movimientos[:8]:
+        # Helios: Se eliminó el límite [:8] para que sea una lista infinita desde el inicio al fin
+        for fecha, detalle, monto in movimientos:
             color_txt = "#00FF66" if "VENTA" in detalle else "#FF0055"
             hora = fecha.split()[-1] if " " in fecha else ""
             st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{detalle}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(monto):.2f} ({hora})</span></div>", unsafe_allow_html=True)
@@ -366,8 +365,17 @@ with tab_gastos:
     st.markdown("<br><h5 style='color: #CFD8DC;'>📋 Gastos de hoy registrados:</h5>", unsafe_allow_html=True)
     if datos["compras"]:
         gastos_hoy = datos["compras"]
-        for g in gastos_hoy[:5]:
-            st.markdown(f"<div style='background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #FF0055;'><span style='color: #FFEA00; font-weight: bold;'>• {g['detalle']}</span> -> <span style='color: #FF0055; font-weight: bold;'>S/. {g['monto']:.2f}</span></div>", unsafe_allow_html=True)
+        try:
+            # Ordenar los gastos de más reciente a más antiguo
+            gastos_hoy_sorted = sorted(gastos_hoy, key=lambda x: x["fecha"], reverse=True)
+        except:
+            gastos_hoy_sorted = gastos_hoy
+            
+        # Helios: Se eliminó el límite [:5] para lista infinita y se añadió el formato con hora unificado
+        for g in gastos_hoy_sorted:
+            fecha = g.get("fecha", "")
+            hora = fecha.split()[-1] if " " in fecha else ""
+            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #FF0055;'><span style='color: #FFEA00; font-weight: bold;'>• {g['detalle']}</span><span style='color: #FF0055; font-weight: bold;'>S/. {g['monto']:.2f} ({hora})</span></div>", unsafe_allow_html=True)
     else:
         st.info("No hay gastos registrados hoy.")
 
