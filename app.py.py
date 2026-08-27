@@ -203,14 +203,14 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     hilo.start()
     return True
 
-# Inicializar caché en session state
+# Sincronización de caché
 if "datos_cache" not in st.session_state:
     with st.spinner("🔌 Conectando con la Caja Consolidada..."):
         st.session_state["datos_cache"] = cargar_datos_cloud()
 
 datos = st.session_state["datos_cache"]
 
-# Menú de Productos de Caldería Sumac con rutas de imagen reales (como en la versión de Python)
+# Menú de Productos de Caldería Sumac con rutas de imagen reales
 PRODUCTOS_INFO = [
     {"nombre": "Caldo sin presa", "precio": 5.0, "icono": "🍲", "imagen": "caldo_sin_presa.png"},
     {"nombre": "Caldo presa mediana", "precio": 8.0, "icono": "🍲", "imagen": "caldo_sicuani.png"},
@@ -234,21 +234,18 @@ def contar_vendidos_hoy(nombre_base):
             total += 1
     return total
 
-# Función súper robusta para extraer la hora (HH:MM) de cualquier formato de fecha (ISO, Sheets, etc.)
+# Función súper robusta para extraer la hora (HH:MM) de cualquier formato de fecha
 def extraer_hora(fecha_str):
     if not fecha_str:
         return "--:--"
-    # Si viene en formato ISO (con T)
     if "T" in fecha_str:
         parts = fecha_str.split("T")
         if len(parts) > 1:
             return parts[1][:5]
-    # Si viene con espacio
     if " " in fecha_str:
         parts = fecha_str.split()
         if len(parts) > 1:
             return parts[1][:5]
-    # Si contiene dos puntos (ej: "13:25:00")
     if ":" in fecha_str:
         import re
         match = re.search(r'(\d{1,2}:\d{2})', fecha_str)
@@ -262,23 +259,22 @@ tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anota
 with tab_ventas:
     st.markdown("<h4 style='color: #CFD8DC;'>Selecciona para vender:</h4>", unsafe_allow_html=True)
     
-    # Grid de imágenes de producto y botones de venta de 2 en 2 (Como lo hicimos en Python)
+    # Grid de imágenes de producto y botones de venta de 2 en 2 (Con imágenes compactadas al 50% de ancho de columna)
     for i in range(0, len(PRODUCTOS_INFO), 2):
         col1, col2 = st.columns(2)
         
         # ---- PRODUCTO 1 ----
         p1 = PRODUCTOS_INFO[i]
         with col1:
-            # Renderizar la hermosa imagen de producto con bordes redondeados y sombra
+            # Helios: Se redujo el tamaño de la imagen en 50% (configurada a un ancho de 110px en vez de estirarse)
             if "imagen" in p1 and os.path.exists(p1["imagen"]):
-                st.image(p1["imagen"], use_container_width=True)
+                st.image(p1["imagen"], width=110)
                 
             cant1 = contar_vendidos_hoy(p1["nombre"])
             es_caldo1 = "Caldo" in p1["nombre"]
             huevos_extra1 = st.session_state.get(f"huevos_extra_{i}", 0) if es_caldo1 else 0
             precio_final1 = p1["precio"] + (huevos_extra1 * 1.0)
             
-            # Formatear etiqueta con huevos si aplica
             if huevos_extra1 > 0:
                 label_p1 = f"🛒 {p1['nombre']}\nS/. {precio_final1:.2f} (+{huevos_extra1}🥚)\n[ Hoy: {cant1} ]"
             else:
@@ -295,7 +291,6 @@ with tab_ventas:
                         st.session_state[f"huevos_extra_{i}"] = 0
                     st.rerun()
             
-            # Controles +/- de huevos extra justo abajo para caldos
             if es_caldo1:
                 c_dec, c_val, c_inc = st.columns([1, 1.5, 1])
                 with c_dec:
@@ -315,9 +310,9 @@ with tab_ventas:
         if i + 1 < len(PRODUCTOS_INFO):
             p2 = PRODUCTOS_INFO[i+1]
             with col2:
-                # Renderizar la hermosa imagen de producto con bordes redondeados y sombra
+                # Helios: Se redujo el tamaño de la imagen en 50% (ancho fijo de 110px)
                 if "imagen" in p2 and os.path.exists(p2["imagen"]):
-                    st.image(p2["imagen"], use_container_width=True)
+                    st.image(p2["imagen"], width=110)
                     
                 cant2 = contar_vendidos_hoy(p2["nombre"])
                 es_caldo2 = "Caldo" in p2["nombre"]
@@ -366,7 +361,7 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenar por fecha y hora de más reciente a más antiguo
-            movimientos.sort(key=lambda x: x[0], reverse=True)
+            movimientos.sort(key=lambda x: x, reverse=True)
         except:
             pass
         for fecha, detalle, monto in movimientos:
