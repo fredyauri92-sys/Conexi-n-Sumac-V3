@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import json
 import threading
+import os
 from datetime import datetime
 
 # Configuración de página móvil premium
@@ -96,10 +97,22 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Cabecera limpia
-st.markdown("<h1 style='text-align: center; color: #FFFFFF; margin-bottom: 0;'>🍜 CALDERÍA SUMAC</h1>", unsafe_allow_html=True)
-# Removido "POS Ultra-Veloz", quedando únicamente la imagen del rayito ⚡
-st.markdown("<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 14px;'>📍 Sicuani, Canchis, Cusco  •  ⚡</p>", unsafe_allow_html=True)
+# --- ENCABEZADO INTEGRADO PREMIUM (YAURI CLOUD LOGO) ---
+# Se utiliza un diseño de 3 columnas para centrar el logo y que tenga un tamaño óptimo para celular
+col_l1, col_l2, col_l3 = st.columns([1, 1.6, 1])
+with col_l2:
+    try:
+        # Busca primero el logo futurista; si no, el clásico; de forma robusta
+        if os.path.exists("yauri_cloud_logo_futuristic_1.png"):
+            st.image("yauri_cloud_logo_futuristic_1.png", use_container_width=True)
+        elif os.path.exists("yauri_cloud_logo.png"):
+            st.image("yauri_cloud_logo.png", use_container_width=True)
+    except Exception as e:
+        pass
+
+# Cabecera limpia y estilizada
+st.markdown("<h1 style='text-align: center; color: #FFFFFF; margin-top: -10px; margin-bottom: 0;'>🍜 CALDERÍA SUMAC</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 13px; margin-bottom: 5px;'>📍 Sicuani, Canchis, Cusco  •  ⚡ Powered by Yauri Cloud</p>", unsafe_allow_html=True)
 
 # --- ENLACE DE GOOGLE SHEETS COMPLETAMENTE AUTOMÁTICO ---
 API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbyEtpDsa8tPJ3LKnNmca4Smm71X1XE88egDdqdPMqHkOZbATHnunENK4Ddc5zHvpZdq_A/exec"
@@ -293,14 +306,16 @@ with tab_ventas:
                     with c_dec2:
                         if st.button("➖", key=f"dec_{i+1}", help="Quitar huevo"):
                             if st.session_state[f"huevos_extra_{i+1}"] > 0:
-                                st.session_state[f"huevos_extra_{i+1}"] -= 1
+                                iplus1 = i+1
+                                st.session_state[f"huevos_extra_{iplus1}"] -= 1
                                 st.rerun()
                     with c_val2:
                         st.markdown(f"<div style='text-align: center; font-size: 13px; font-weight: bold; padding-top: 8px; color: #FFEA00;'>🥚 +{huevos_extra2}</div>", unsafe_allow_html=True)
                     with c_inc2:
                         if st.button("➕", key=f"inc_{i+1}", help="Agregar huevo (+S/. 1.00)"):
                             if st.session_state[f"huevos_extra_{i+1}"] < 4:
-                                st.session_state[f"huevos_extra_{i+1}"] += 1
+                                iplus1 = i+1
+                                st.session_state[f"huevos_extra_{iplus1}"] += 1
                                 st.rerun()
 
     st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno:</h5>", unsafe_allow_html=True)
@@ -314,7 +329,7 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenar por fecha de más reciente a más antiguo
-            movimientos.sort(key=lambda x: x[0], reverse=True)
+            movimientos.sort(key=lambda x: x, reverse=True)
         except:
             pass
         for fecha, detalle, monto in movimientos[:8]:
@@ -327,8 +342,7 @@ with tab_ventas:
 with tab_gastos:
     st.markdown("<h4 style='color: #CFD8DC;'>Anotar un Gasto de Caja:</h4>", unsafe_allow_html=True)
     
-    # SOLUCIÓN DE LIMPIEZA DEFINITIVA: Usamos un Formulario nativo de Streamlit con clear_on_submit=True
-    # Esto borra automáticamente los campos de texto al presionar el botón de enviar, sin bugs de SessionState.
+    # Formulario nativo con clear_on_submit=True
     with st.form("formulario_gastos_sumac", clear_on_submit=True):
         desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)")
         monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0)
