@@ -290,30 +290,35 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenar por fecha de más reciente a más antiguo
-            movimientos.sort(key=lambda x: x[0], reverse=True)
+            movimientos.sort(key=lambda x: x, reverse=True)
         except:
             pass
         for m in movimientos[:8]:
-            color_txt = "#00FF66" if "VENTA" in m[1] else "#FF0055"
-            hora = m[0].split()[-1] if " " in m[0] else ""
-            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{m[1]}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(m[2]):.2f} ({hora})</span></div>", unsafe_allow_html=True)
+            color_txt = "#00FF66" if "VENTA" in m else "#FF0055"
+            hora = m.split()[-1] if " " in m else ""
+            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{m}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(m):.2f} ({hora})</span></div>", unsafe_allow_html=True)
     else:
         st.info("No hay movimientos registrados hoy.")
 
 with tab_gastos:
     st.markdown("<h4 style='color: #CFD8DC;'>Anotar un Gasto de Caja:</h4>", unsafe_allow_html=True)
     
-    # Text input con clave de estado
-    desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)", key="desc_gasto_web")
-    monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0, key="monto_gasto_web")
+    # Inputs con Session State inicializados
+    if "gasto_desc_input" not in st.session_state:
+        st.session_state["gasto_desc_input"] = ""
+    if "gasto_monto_input" not in st.session_state:
+        st.session_state["gasto_monto_input"] = 0.0
+
+    desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)", key="gasto_desc_input")
+    monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0, key="gasto_monto_input")
     
     if st.button("💾 Registrar Gasto en Caja", key="btn_registrar_gasto_web"):
         if desc_gasto and monto_gasto > 0:
             if registrar_movimiento_instantaneo("GASTO", desc_gasto, monto_gasto):
-                # Limpiar los campos de forma automática reseteando su Session State
-                st.session_state["desc_gasto_web"] = ""
-                st.session_state["monto_gasto_web"] = 0.0
-                st.success(f"🔴 Gasto registrado con éxito: {desc_gasto} por S/. {monto_gasto:.2f}")
+                # Limpiar la memoria intermedia de forma segura para reiniciar los campos en la interfaz
+                st.session_state["gasto_desc_input"] = ""
+                st.session_state["gasto_monto_input"] = 0.0
+                st.toast(f"🔴 Gasto registrado: {desc_gasto} (S/. {monto_gasto:.2f})", icon="💸")
                 st.rerun()
         else:
             st.error("Por favor ingresa una descripción y un monto válido.")
@@ -329,8 +334,8 @@ with tab_gastos:
 with tab_caja:
     st.markdown("<h4 style='text-align: center; color: #CFD8DC;'>💼 Finanzas del Turno</h4>", unsafe_allow_html=True)
     
-    # Botón de Sincronización Manual para actualizar caja consolidada de todos los mozos
-    col_v1, col_v2 = st.columns()
+    # Sincronización Manual para actualizar caja consolidada
+    col_v1, col_v2 = st.columns(2)
     with col_v1:
         st.markdown("<span style='font-size: 13px; color: #CFD8DC;'>Sincronizar las ventas de todos los mozos:</span>", unsafe_allow_html=True)
     with col_v2:
@@ -368,7 +373,9 @@ with tab_caja:
     # --- SECCIÓN SEGURO DE REINICIO DE CAJA ---
     st.markdown("---")
     st.markdown("<h5 style='color: #FF0055;'>🧹 Zona de Seguridad</h5>", unsafe_allow_html=True)
-    clave_caja = st.text_input("Contraseña de Administrador (Año de nacimiento):", type="password", key="clave_caja_web")
+    
+    # Etiqueta limpia que solo dice "Contraseña:" para máxima discreción
+    clave_caja = st.text_input("Contraseña:", type="password", key="clave_caja_web")
     if clave_caja == "1992":
         if st.button("⚠️ CONFIRMAR REINICIO COMPLETO DE CAJA", key="btn_reiniciar_caja_web"):
             api_url = st.session_state["api_url"]
