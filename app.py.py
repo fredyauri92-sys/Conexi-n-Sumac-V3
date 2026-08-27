@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import json
+import threading
 from datetime import datetime
 
 # Configuración de página móvil premium
@@ -65,7 +66,7 @@ st.markdown("""
         border-radius: 10px;
         text-align: center;
         font-weight: bold;
-        font-size: 12px;
+        font-size: 11px;
         margin-bottom: 15px;
         border: 1px solid #00FF66;
     }
@@ -74,23 +75,22 @@ st.markdown("""
 
 # Cabecera limpia
 st.markdown("<h1 style='text-align: center; color: #FFFFFF; margin-bottom: 0;'>🍜 CALDERÍA SUMAC</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 14px;'>📍 Sicuani, Canchis, Cusco  •  POS Celular Autorizado</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 14px;'>📍 Sicuani, Canchis, Cusco  •  POS Ultra-Veloz ⚡</p>", unsafe_allow_html=True)
 
-# --- ENLACE DE GOOGLE SHEETS COMPLETAMENTE AUTOMÁTICO (HARDCODED) ---
-# Helios: He pegado aquí tu enlace exacto de Google Sheets para que NINGÚN mozo tenga que configurar nada. ¡Solo abrir y usar!
+# --- ENLACE DE GOOGLE SHEETS COMPLETAMENTE AUTOMÁTICO ---
 API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbyEtpDsa8tPJ3LKnNmca4Smm71X1XE88egDdqdPMqHkOZbATHnunENK4Ddc5zHvpZdq_A/exec"
 
 if "api_url" not in st.session_state:
     st.session_state["api_url"] = API_URL_DEFAULT
 
-# Indicador de conexión arriba de la app
-st.markdown("<div class='status-badge'>🟢 CONECTADO AUTOMÁTICAMENTE CON GOOGLE SHEETS (CAJA CONSOLIDADA)</div>", unsafe_allow_html=True)
+# Indicador de conexión automática arriba
+st.markdown("<div class='status-badge'>⚡ SISTEMA CONECTOR ACTIVO (REGISTRO INSTANTÁNEO HABILITADO)</div>", unsafe_allow_html=True)
 
-# Funciones para leer y escribir en Google Sheets a través de la API de Apps Script
+# --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE ---
 def cargar_datos_cloud():
     api_url = st.session_state["api_url"]
     try:
-        response = requests.get(api_url, timeout=5)
+        response = requests.get(api_url, timeout=6)
         if response.status_code == 200:
             rows = response.json()
             datos_formateados = {"ventas": [], "compras": [], "planilla": []}
@@ -114,44 +114,54 @@ def cargar_datos_cloud():
                     })
             return datos_formateados
     except Exception as e:
-        st.sidebar.error(f"Error de conexión con la base de datos: {e}")
+        pass
     
-    if "local_data" not in st.session_state:
-        st.session_state["local_data"] = {"ventas": [], "compras": [], "planilla": []}
-    return st.session_state["local_data"]
+    return {"ventas": [], "compras": [], "planilla": []}
 
-def guardar_movimiento_cloud(tipo, detalle, monto):
+# Hilo de ejecución secundario para subir a Sheets sin congelar la pantalla del mozo
+def enviar_a_sheets_bg(api_url, payload):
+    try:
+        requests.post(api_url, json=payload, timeout=12)
+    except:
+        pass
+
+def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
     fecha_hoy = datetime.now().strftime("%Y-%m-%d %H:%M")
     
-    try:
-        payload = {
-            "action": "registrar",
+    # 1. Registrar LOCALMENTE en la memoria (caché) para actualizar la pantalla en MILISEGUNDOS
+    if tipo == "VENTA":
+        st.session_state["datos_cache"]["ventas"].append({
             "fecha": fecha_hoy,
-            "tipo": tipo,
+            "producto": detalle,
+            "total": monto
+        })
+    elif tipo == "GASTO":
+        st.session_state["datos_cache"]["compras"].append({
+            "fecha": fecha_hoy,
             "detalle": detalle,
             "monto": monto
-        }
-        response = requests.post(api_url, json=payload, timeout=5)
-        return response.status_code == 200
-    except:
-        # Respaldo local temporal si falla la conexión
-        if tipo == "VENTA":
-            st.session_state["local_data"]["ventas"].append({
-                "fecha": fecha_hoy,
-                "producto": detalle,
-                "total": monto
-            })
-        elif tipo == "GASTO":
-            st.session_state["local_data"]["compras"].append({
-                "fecha": fecha_hoy,
-                "detalle": detalle,
-                "monto": monto
-            })
-        return True
+        })
+        
+    # 2. Disparar el envío a Google Sheets de forma ASÍNCRONA (en segundo plano)
+    payload = {
+        "action": "registrar",
+        "fecha": fecha_hoy,
+        "tipo": tipo,
+        "detalle": detalle,
+        "monto": monto
+    }
+    
+    hilo = threading.Thread(target=enviar_a_sheets_bg, args=(api_url, payload))
+    hilo.start()
+    return True
 
-# Cargar los datos de forma inmediata
-datos = cargar_datos_cloud()
+# Inicializar caché en session state (solo se descarga de Google Sheets la primera vez que se abre la app)
+if "datos_cache" not in st.session_state:
+    with st.spinner("🔌 Conectando con la Caja Consolidada..."):
+        st.session_state["datos_cache"] = cargar_datos_cloud()
+
+datos = st.session_state["datos_cache"]
 
 # Menú de Productos de Caldería Sumac
 PRODUCTOS_INFO = [
@@ -163,6 +173,20 @@ PRODUCTOS_INFO = [
     {"nombre": "Agua mineral", "precio": 1.0, "icono": "💧"}
 ]
 
+# Inicializar modificadores de huevos extra si no existen
+for idx in range(len(PRODUCTOS_INFO)):
+    key_h = f"huevos_extra_{idx}"
+    if key_h not in st.session_state:
+        st.session_state[key_h] = 0
+
+# Helper para contar ventas consolidadas hoy por producto (soporta nombres con modificadores)
+def contar_vendidos_hoy(nombre_base):
+    total = 0
+    for v in datos["ventas"]:
+        if nombre_base in v.get("producto", ""):
+            total += 1
+    return total
+
 # Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
 
@@ -173,26 +197,89 @@ with tab_ventas:
     for i in range(0, len(PRODUCTOS_INFO), 2):
         col1, col2 = st.columns(2)
         
+        # ---- PRODUCTO 1 ----
         p1 = PRODUCTOS_INFO[i]
         with col1:
-            if st.button(f"{p1['icono']} {p1['nombre']}\nS/. {p1['precio']:.2f}", key=f"btn_{i}"):
-                if guardar_movimiento_cloud("VENTA", p1["nombre"], p1["precio"]):
-                    st.toast(f"🟢 Venta registrada: {p1['nombre']}", icon="🍲")
-                    st.rerun()
-                else:
-                    st.error("Error al conectar con la base de datos cloud.")
+            cant1 = contar_vendidos_hoy(p1["nombre"])
+            es_caldo1 = "Caldo" in p1["nombre"]
+            huevos_extra1 = st.session_state.get(f"huevos_extra_{i}", 0) if es_caldo1 else 0
+            precio_final1 = p1["precio"] + (huevos_extra1 * 1.0)
+            
+            # Formatear etiqueta con huevos si aplica
+            if huevos_extra1 > 0:
+                label_p1 = f"{p1['icono']} {p1['nombre']}\nS/. {precio_final1:.2f} (+{huevos_extra1}🥚)\n[ Hoy: {cant1} ]"
+            else:
+                label_p1 = f"{p1['icono']} {p1['nombre']}\nS/. {precio_final1:.2f}\n[ Hoy: {cant1} ]"
                 
+            if st.button(label_p1, key=f"btn_{i}"):
+                nombre_reg1 = p1["nombre"]
+                if huevos_extra1 > 0:
+                    nombre_reg1 += f" (+{huevos_extra1} huevo{'s' if huevos_extra1 > 1 else ''})"
+                
+                if registrar_movimiento_instantaneo("VENTA", nombre_reg1, precio_final1):
+                    st.toast(f"🟢 Venta registrada: {nombre_reg1}", icon="🍲")
+                    # Reset huevos a 0
+                    if es_caldo1:
+                        st.session_state[f"huevos_extra_{i}"] = 0
+                    st.rerun()
+            
+            # Controles +/- de huevos extra justo abajo para caldos
+            if es_caldo1:
+                c_dec, c_val, c_inc = st.columns([1, 1.5, 1])
+                with c_dec:
+                    if st.button("➖", key=f"dec_{i}", help="Quitar huevo"):
+                        if st.session_state[f"huevos_extra_{i}"] > 0:
+                            st.session_state[f"huevos_extra_{i}"] -= 1
+                            st.rerun()
+                with c_val:
+                    st.markdown(f"<div style='text-align: center; font-size: 13px; font-weight: bold; padding-top: 8px; color: #FFEA00;'>🥚 +{huevos_extra1}</div>", unsafe_allow_html=True)
+                with c_inc:
+                    if st.button("➕", key=f"inc_{i}", help="Agregar huevo (+S/. 1.00)"):
+                        if st.session_state[f"huevos_extra_{i}"] < 4:
+                            st.session_state[f"huevos_extra_{i}"] += 1
+                            st.rerun()
+                
+        # ---- PRODUCTO 2 ----
         if i + 1 < len(PRODUCTOS_INFO):
             p2 = PRODUCTOS_INFO[i+1]
             with col2:
-                if st.button(f"{p2['icono']} {p2['nombre']}\nS/. {p2['precio']:.2f}", key=f"btn_{i+1}"):
-                    if guardar_movimiento_cloud("VENTA", p2["nombre"], p2["precio"]):
-                        st.toast(f"🟢 Venta registrada: {p2['nombre']}", icon="🥤")
+                cant2 = contar_vendidos_hoy(p2["nombre"])
+                es_caldo2 = "Caldo" in p2["nombre"]
+                huevos_extra2 = st.session_state.get(f"huevos_extra_{i+1}", 0) if es_caldo2 else 0
+                precio_final2 = p2["precio"] + (huevos_extra2 * 1.0)
+                
+                if huevos_extra2 > 0:
+                    label_p2 = f"{p2['icono']} {p2['nombre']}\nS/. {precio_final2:.2f} (+{huevos_extra2}🥚)\n[ Hoy: {cant2} ]"
+                else:
+                    label_p2 = f"{p2['icono']} {p2['nombre']}\nS/. {precio_final2:.2f}\n[ Hoy: {cant2} ]"
+                    
+                if st.button(label_p2, key=f"btn_{i+1}"):
+                    nombre_reg2 = p2["nombre"]
+                    if huevos_extra2 > 0:
+                        nombre_reg2 += f" (+{huevos_extra2} huevo{'s' if huevos_extra2 > 1 else ''})"
+                    
+                    if registrar_movimiento_instantaneo("VENTA", nombre_reg2, precio_final2):
+                        st.toast(f"🟢 Venta registrada: {nombre_reg2}", icon="🥤")
+                        if es_caldo2:
+                            st.session_state[f"huevos_extra_{i+1}"] = 0
                         st.rerun()
-                    else:
-                        st.error("Error al conectar con la base de datos cloud.")
+                        
+                if es_caldo2:
+                    c_dec2, c_val2, c_inc2 = st.columns([1, 1.5, 1])
+                    with c_dec2:
+                        if st.button("➖", key=f"dec_{i+1}", help="Quitar huevo"):
+                            if st.session_state[f"huevos_extra_{i+1}"] > 0:
+                                st.session_state[f"huevos_extra_{i+1}"] -= 1
+                                st.rerun()
+                    with c_val2:
+                        st.markdown(f"<div style='text-align: center; font-size: 13px; font-weight: bold; padding-top: 8px; color: #FFEA00;'>🥚 +{huevos_extra2}</div>", unsafe_allow_html=True)
+                    with c_inc2:
+                        if st.button("➕", key=f"inc_{i+1}", help="Agregar huevo (+S/. 1.00)"):
+                            if st.session_state[f"huevos_extra_{i+1}"] < 4:
+                                st.session_state[f"huevos_extra_{i+1}"] += 1
+                                st.rerun()
 
-    st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos consolidados:</h5>", unsafe_allow_html=True)
+    st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno:</h5>", unsafe_allow_html=True)
     
     movimientos = []
     for v in datos["ventas"]:
@@ -202,6 +289,7 @@ with tab_ventas:
         
     if movimientos:
         try:
+            # Ordenar por fecha de más reciente a más antiguo
             movimientos.sort(key=lambda x: x[0], reverse=True)
         except:
             pass
@@ -214,16 +302,19 @@ with tab_ventas:
 
 with tab_gastos:
     st.markdown("<h4 style='color: #CFD8DC;'>Anotar un Gasto de Caja:</h4>", unsafe_allow_html=True)
+    
+    # Text input con clave de estado
     desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)", key="desc_gasto_web")
     monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0, key="monto_gasto_web")
     
     if st.button("💾 Registrar Gasto en Caja", key="btn_registrar_gasto_web"):
         if desc_gasto and monto_gasto > 0:
-            if guardar_movimiento_cloud("GASTO", desc_gasto, monto_gasto):
-                st.success(f"🔴 Gasto registrado: {desc_gasto} por S/. {monto_gasto:.2f}")
+            if registrar_movimiento_instantaneo("GASTO", desc_gasto, monto_gasto):
+                # Limpiar los campos de forma automática reseteando su Session State
+                st.session_state["desc_gasto_web"] = ""
+                st.session_state["monto_gasto_web"] = 0.0
+                st.success(f"🔴 Gasto registrado con éxito: {desc_gasto} por S/. {monto_gasto:.2f}")
                 st.rerun()
-            else:
-                st.error("Error al conectar con la base de datos cloud.")
         else:
             st.error("Por favor ingresa una descripción y un monto válido.")
 
@@ -238,6 +329,16 @@ with tab_gastos:
 with tab_caja:
     st.markdown("<h4 style='text-align: center; color: #CFD8DC;'>💼 Finanzas del Turno</h4>", unsafe_allow_html=True)
     
+    # Botón de Sincronización Manual para actualizar caja consolidada de todos los mozos
+    col_v1, col_v2 = st.columns()
+    with col_v1:
+        st.markdown("<span style='font-size: 13px; color: #CFD8DC;'>Sincronizar las ventas de todos los mozos:</span>", unsafe_allow_html=True)
+    with col_v2:
+        if st.button("🔄 Actualizar", key="btn_sync_caja"):
+            with st.spinner("Conectando..."):
+                st.session_state["datos_cache"] = cargar_datos_cloud()
+                st.rerun()
+
     total_v = sum(v["total"] for v in datos["ventas"])
     total_g = sum(c["monto"] for c in datos["compras"])
     egresos = total_g
@@ -271,13 +372,15 @@ with tab_caja:
     if clave_caja == "1992":
         if st.button("⚠️ CONFIRMAR REINICIO COMPLETO DE CAJA", key="btn_reiniciar_caja_web"):
             api_url = st.session_state["api_url"]
-            try:
-                payload = {"action": "reiniciar"}
-                response = requests.post(api_url, json=payload, timeout=5)
-                if response.status_code == 200:
-                    st.success("¡Base de datos en Google Sheets borrada con éxito!")
-                    st.rerun()
-                else:
-                    st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
-            except Exception as e:
-                st.error(f"Error de conexión con el servidor: {e}")
+            with st.spinner("Borrando base de datos central..."):
+                try:
+                    payload = {"action": "reiniciar"}
+                    response = requests.post(api_url, json=payload, timeout=5)
+                    if response.status_code == 200:
+                        st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
+                        st.success("¡Base de datos en Google Sheets borrada con éxito!")
+                        st.rerun()
+                    else:
+                        st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
+                except Exception as e:
+                    st.error(f"Error de conexión con el servidor: {e}")
