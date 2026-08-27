@@ -97,24 +97,27 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- ENCABEZADO INTEGRADO PREMIUM (YAURI CLOUD LOGO RECTANGULAR MINI) ---
-# Hemos modificado las columnas a [1.6, 1.0, 1.6] para reducir el espacio y que ocupe exactamente la mitad de antes
-col_l1, col_l2, col_l3 = st.columns([1.6, 1.0, 1.6])
-with col_l2:
+# --- ENCABEZADO INTEGRADO PREMIUM (LOGO "YAURI CLOUD" EN LA ESQUINA SUPERIOR IZQUIERDA) ---
+# Usamos una disposición de columnas asimétrica [1, 3.5] para ubicar el logo compacto a la izquierda del título
+col_logo, col_titulo = st.columns([1, 3.5])
+
+with col_logo:
     try:
-        # Cargar logo de forma prioritariamente compacta
-        if os.path.exists("yauri_cloud_logo_rectangular.png"):
+        # Prioriza la carga de la imagen renombrada 'yauri_cloud_logo_final.png' en la esquina izquierda
+        if os.path.exists("yauri_cloud_logo_final.png"):
+            st.image("yauri_cloud_logo_final.png", use_container_width=True)
+        elif os.path.exists("yauri_cloud_logo_rectangular.png"):
             st.image("yauri_cloud_logo_rectangular.png", use_container_width=True)
         elif os.path.exists("yauri_cloud_logo_futuristic_1.png"):
             st.image("yauri_cloud_logo_futuristic_1.png", use_container_width=True)
-        elif os.path.exists("yauri_cloud_logo.png"):
-            st.image("yauri_cloud_logo.png", use_container_width=True)
     except Exception as e:
         pass
 
-# Cabecera limpia y estilizada
-st.markdown("<h1 style='text-align: center; color: #FFFFFF; margin-top: -10px; margin-bottom: 0;'>🍜 CALDERÍA SUMAC</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 13px; margin-bottom: 5px;'>📍 Sicuani, Canchis, Cusco  •  ⚡ Powered by Yauri Cloud</p>", unsafe_allow_html=True)
+with col_titulo:
+    st.markdown("<h2 style='color: #FFFFFF; margin: 0; padding-top: 5px; font-size: 22px; line-height: 1.1;'>🍜 CALDERÍA SUMAC</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-top: 2px;'>📍 Sicuani, Canchis • ⚡ Powered by Yauri Cloud</p>", unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
 
 # --- ENLACE DE GOOGLE SHEETS COMPLETAMENTE AUTOMÁTICO ---
 API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbyEtpDsa8tPJ3LKnNmca4Smm71X1XE88egDdqdPMqHkOZbATHnunENK4Ddc5zHvpZdq_A/exec"
@@ -342,15 +345,17 @@ with tab_ventas:
 with tab_gastos:
     st.markdown("<h4 style='color: #CFD8DC;'>Anotar un Gasto de Caja:</h4>", unsafe_allow_html=True)
     
-    # Formulario inteligente con autolimpieza nativa segura
+    # Formulario inteligente con autolimpieza nativa segura y campo vaciado por defecto (value=None)
     with st.form("formulario_gastos_sumac", clear_on_submit=True):
         desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)")
-        monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0)
+        # Helios: Cambiado a value=None para que aparezca completamente vacío y no tengas que borrar el 0.00
+        # Mantiene las flechas y botones -+ nativos de Streamlit pero inicia totalmente limpio
+        monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0, value=None)
         
         btn_registrar = st.form_submit_button("💾 Registrar Gasto en Caja")
         
         if btn_registrar:
-            if desc_gasto and monto_gasto > 0:
+            if desc_gasto and monto_gasto is not None and monto_gasto > 0:
                 if registrar_movimiento_instantaneo("GASTO", desc_gasto, monto_gasto):
                     st.toast(f"🔴 Gasto registrado: {desc_gasto} (S/. {monto_gasto:.2f})", icon="💸")
                     st.rerun()
