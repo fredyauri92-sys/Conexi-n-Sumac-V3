@@ -25,8 +25,8 @@ st.markdown("""
         color: #FFFFFF;
         border: 1px solid #37474F;
         border-radius: 15px;
-        padding: 15px;
-        font-size: 16px;
+        padding: 12px;
+        font-size: 15px;
         font-weight: bold;
         width: 100%;
         box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
@@ -36,6 +36,12 @@ st.markdown("""
         background-color: #FFEA00 !important;
         color: #121212 !important;
         border-color: #FFEA00 !important;
+    }
+    /* Estilo para las imágenes de productos (Bordes redondeados y sombra premium) */
+    [data-testid="stImage"] img {
+        border-radius: 15px !important;
+        border: 1px solid #37474F !important;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5) !important;
     }
     /* Estilo para el botón de formulario */
     div.stFormSubmitButton > button {
@@ -102,7 +108,7 @@ col_logo, col_titulo = st.columns([0.45, 3.55])
 
 with col_logo:
     try:
-        # Se carga el logotipo de Yauri Cloud a un ancho de 64 píxeles (scale 40%)
+        # Se carga el logotipo a un ancho de 64 píxeles (scale 40%)
         if os.path.exists("yauri_cloud_logo_final.png"):
             st.image("yauri_cloud_logo_final.png", width=64)
         elif os.path.exists("yauri_cloud_logo_rectangular.png"):
@@ -197,21 +203,21 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     hilo.start()
     return True
 
-# Inicializar caché en session state (solo se descarga de Google Sheets la primera vez que se abre la app)
+# Inicializar caché en session state
 if "datos_cache" not in st.session_state:
     with st.spinner("🔌 Conectando con la Caja Consolidada..."):
         st.session_state["datos_cache"] = cargar_datos_cloud()
 
 datos = st.session_state["datos_cache"]
 
-# Menú de Productos de Caldería Sumac
+# Menú de Productos de Caldería Sumac con rutas de imagen reales (como en la versión de Python)
 PRODUCTOS_INFO = [
-    {"nombre": "Caldo sin presa", "precio": 5.0, "icono": "🍲"},
-    {"nombre": "Caldo presa mediana", "precio": 8.0, "icono": "🍲"},
-    {"nombre": "Caldo presa entera", "precio": 12.0, "icono": "🍲"},
-    {"nombre": "Gaseosa personal", "precio": 2.0, "icono": "🥤"},
-    {"nombre": "Gaseosa de 1 Litro", "precio": 6.0, "icono": "🍾"},
-    {"nombre": "Agua mineral", "precio": 1.0, "icono": "💧"}
+    {"nombre": "Caldo sin presa", "precio": 5.0, "icono": "🍲", "imagen": "caldo_sin_presa.png"},
+    {"nombre": "Caldo presa mediana", "precio": 8.0, "icono": "🍲", "imagen": "caldo_sicuani.png"},
+    {"nombre": "Caldo presa entera", "precio": 12.0, "icono": "🍲", "imagen": "caldo_presa_grande.png"},
+    {"nombre": "Gaseosa personal", "precio": 2.0, "icono": "🥤", "imagen": "gaseosas_personales.png"},
+    {"nombre": "Gaseosa de 1 Litro", "precio": 6.0, "icono": "🍾", "imagen": "gaseosas_litro.png"},
+    {"nombre": "Agua mineral", "precio": 1.0, "icono": "💧", "imagen": "agua_san_luis.png"}
 ]
 
 # Inicializar modificadores de huevos extra si no existen
@@ -220,7 +226,7 @@ for idx in range(len(PRODUCTOS_INFO)):
     if key_h not in st.session_state:
         st.session_state[key_h] = 0
 
-# Helper para contar ventas consolidadas hoy por producto (soporta nombres con modificadores)
+# Helper para contar ventas consolidadas hoy por producto
 def contar_vendidos_hoy(nombre_base):
     total = 0
     for v in datos["ventas"]:
@@ -228,19 +234,45 @@ def contar_vendidos_hoy(nombre_base):
             total += 1
     return total
 
+# Función súper robusta para extraer la hora (HH:MM) de cualquier formato de fecha (ISO, Sheets, etc.)
+def extraer_hora(fecha_str):
+    if not fecha_str:
+        return "--:--"
+    # Si viene en formato ISO (con T)
+    if "T" in fecha_str:
+        parts = fecha_str.split("T")
+        if len(parts) > 1:
+            return parts[1][:5]
+    # Si viene con espacio
+    if " " in fecha_str:
+        parts = fecha_str.split()
+        if len(parts) > 1:
+            return parts[1][:5]
+    # Si contiene dos puntos (ej: "13:25:00")
+    if ":" in fecha_str:
+        import re
+        match = re.search(r'(\d{1,2}:\d{2})', fecha_str)
+        if match:
+            return match.group(1)
+    return fecha_str[-5:] if len(fecha_str) >= 5 else fecha_str
+
 # Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
 
 with tab_ventas:
     st.markdown("<h4 style='color: #CFD8DC;'>Selecciona para vender:</h4>", unsafe_allow_html=True)
     
-    # Grid de botones grandes y táctiles de 2 en 2
+    # Grid de imágenes de producto y botones de venta de 2 en 2 (Como lo hicimos en Python)
     for i in range(0, len(PRODUCTOS_INFO), 2):
         col1, col2 = st.columns(2)
         
         # ---- PRODUCTO 1 ----
         p1 = PRODUCTOS_INFO[i]
         with col1:
+            # Renderizar la hermosa imagen de producto con bordes redondeados y sombra
+            if "imagen" in p1 and os.path.exists(p1["imagen"]):
+                st.image(p1["imagen"], use_container_width=True)
+                
             cant1 = contar_vendidos_hoy(p1["nombre"])
             es_caldo1 = "Caldo" in p1["nombre"]
             huevos_extra1 = st.session_state.get(f"huevos_extra_{i}", 0) if es_caldo1 else 0
@@ -248,9 +280,9 @@ with tab_ventas:
             
             # Formatear etiqueta con huevos si aplica
             if huevos_extra1 > 0:
-                label_p1 = f"{p1['icono']} {p1['nombre']}\nS/. {precio_final1:.2f} (+{huevos_extra1}🥚)\n[ Hoy: {cant1} ]"
+                label_p1 = f"🛒 {p1['nombre']}\nS/. {precio_final1:.2f} (+{huevos_extra1}🥚)\n[ Hoy: {cant1} ]"
             else:
-                label_p1 = f"{p1['icono']} {p1['nombre']}\nS/. {precio_final1:.2f}\n[ Hoy: {cant1} ]"
+                label_p1 = f"🛒 {p1['nombre']}\nS/. {precio_final1:.2f}\n[ Hoy: {cant1} ]"
                 
             if st.button(label_p1, key=f"btn_{i}"):
                 nombre_reg1 = p1["nombre"]
@@ -259,7 +291,6 @@ with tab_ventas:
                 
                 if registrar_movimiento_instantaneo("VENTA", nombre_reg1, precio_final1):
                     st.toast(f"🟢 Venta registrada: {nombre_reg1}", icon="🍲")
-                    # Reset huevos a 0
                     if es_caldo1:
                         st.session_state[f"huevos_extra_{i}"] = 0
                     st.rerun()
@@ -284,15 +315,19 @@ with tab_ventas:
         if i + 1 < len(PRODUCTOS_INFO):
             p2 = PRODUCTOS_INFO[i+1]
             with col2:
+                # Renderizar la hermosa imagen de producto con bordes redondeados y sombra
+                if "imagen" in p2 and os.path.exists(p2["imagen"]):
+                    st.image(p2["imagen"], use_container_width=True)
+                    
                 cant2 = contar_vendidos_hoy(p2["nombre"])
                 es_caldo2 = "Caldo" in p2["nombre"]
                 huevos_extra2 = st.session_state.get(f"huevos_extra_{i+1}", 0) if es_caldo2 else 0
                 precio_final2 = p2["precio"] + (huevos_extra2 * 1.0)
                 
                 if huevos_extra2 > 0:
-                    label_p2 = f"{p2['icono']} {p2['nombre']}\nS/. {precio_final2:.2f} (+{huevos_extra2}🥚)\n[ Hoy: {cant2} ]"
+                    label_p2 = f"🛒 {p2['nombre']}\nS/. {precio_final2:.2f} (+{huevos_extra2}🥚)\n[ Hoy: {cant2} ]"
                 else:
-                    label_p2 = f"{p2['icono']} {p2['nombre']}\nS/. {precio_final2:.2f}\n[ Hoy: {cant2} ]"
+                    label_p2 = f"🛒 {p2['nombre']}\nS/. {precio_final2:.2f}\n[ Hoy: {cant2} ]"
                     
                 if st.button(label_p2, key=f"btn_{i+1}"):
                     nombre_reg2 = p2["nombre"]
@@ -334,10 +369,9 @@ with tab_ventas:
             movimientos.sort(key=lambda x: x[0], reverse=True)
         except:
             pass
-        # Helios: Se eliminó el límite [:8] para que sea una lista infinita desde el inicio al fin
         for fecha, detalle, monto in movimientos:
             color_txt = "#00FF66" if "VENTA" in detalle else "#FF0055"
-            hora = fecha.split()[-1] if " " in fecha else ""
+            hora = extraer_hora(fecha)
             st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{detalle}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(monto):.2f} ({hora})</span></div>", unsafe_allow_html=True)
     else:
         st.info("No hay movimientos registrados hoy.")
@@ -348,8 +382,6 @@ with tab_gastos:
     # Formulario inteligente con autolimpieza nativa segura y campo vaciado por defecto (value=None)
     with st.form("formulario_gastos_sumac", clear_on_submit=True):
         desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)")
-        # Helios: Cambiado a value=None para que aparezca completamente vacío y no tengas que borrar el 0.00
-        # Mantiene las flechas y botones -+ nativos de Streamlit pero inicia totalmente limpio
         monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0, value=None)
         
         btn_registrar = st.form_submit_button("💾 Registrar Gasto en Caja")
@@ -371,10 +403,9 @@ with tab_gastos:
         except:
             gastos_hoy_sorted = gastos_hoy
             
-        # Helios: Se eliminó el límite [:5] para lista infinita y se añadió el formato con hora unificado
         for g in gastos_hoy_sorted:
             fecha = g.get("fecha", "")
-            hora = fecha.split()[-1] if " " in fecha else ""
+            hora = extraer_hora(fecha)
             st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #FF0055;'><span style='color: #FFEA00; font-weight: bold;'>• {g['detalle']}</span><span style='color: #FF0055; font-weight: bold;'>S/. {g['monto']:.2f} ({hora})</span></div>", unsafe_allow_html=True)
     else:
         st.info("No hay gastos registrados hoy.")
