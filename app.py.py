@@ -97,13 +97,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- ENCABEZADO INTEGRADO PREMIUM (YAURI CLOUD LOGO) ---
+# --- ENCABEZADO INTEGRADO PREMIUM (YAURI CLOUD LOGO RECTANGULAR) ---
 # Se utiliza un diseño de 3 columnas para centrar el logo y que tenga un tamaño óptimo para celular
-col_l1, col_l2, col_l3 = st.columns([1, 1.6, 1])
+col_l1, col_l2, col_l3 = st.columns([1, 2.5, 1])
 with col_l2:
     try:
-        # Busca primero el logo futurista; si no, el clásico; de forma robusta
-        if os.path.exists("yauri_cloud_logo_futuristic_1.png"):
+        # Busca el logo rectangular de baja altura primero de forma prioritaria
+        if os.path.exists("yauri_cloud_logo_rectangular.png"):
+            st.image("yauri_cloud_logo_rectangular.png", use_container_width=True)
+        elif os.path.exists("yauri_cloud_logo_futuristic_1.png"):
             st.image("yauri_cloud_logo_futuristic_1.png", use_container_width=True)
         elif os.path.exists("yauri_cloud_logo.png"):
             st.image("yauri_cloud_logo.png", use_container_width=True)
@@ -306,16 +308,14 @@ with tab_ventas:
                     with c_dec2:
                         if st.button("➖", key=f"dec_{i+1}", help="Quitar huevo"):
                             if st.session_state[f"huevos_extra_{i+1}"] > 0:
-                                iplus1 = i+1
-                                st.session_state[f"huevos_extra_{iplus1}"] -= 1
+                                st.session_state[f"huevos_extra_{i+1}"] -= 1
                                 st.rerun()
                     with c_val2:
                         st.markdown(f"<div style='text-align: center; font-size: 13px; font-weight: bold; padding-top: 8px; color: #FFEA00;'>🥚 +{huevos_extra2}</div>", unsafe_allow_html=True)
                     with c_inc2:
                         if st.button("➕", key=f"inc_{i+1}", help="Agregar huevo (+S/. 1.00)"):
                             if st.session_state[f"huevos_extra_{i+1}"] < 4:
-                                iplus1 = i+1
-                                st.session_state[f"huevos_extra_{iplus1}"] += 1
+                                st.session_state[f"huevos_extra_{i+1}"] += 1
                                 st.rerun()
 
     st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno:</h5>", unsafe_allow_html=True)
@@ -342,7 +342,7 @@ with tab_ventas:
 with tab_gastos:
     st.markdown("<h4 style='color: #CFD8DC;'>Anotar un Gasto de Caja:</h4>", unsafe_allow_html=True)
     
-    # Formulario nativo con clear_on_submit=True
+    # Formulario inteligente con autolimpieza nativa segura
     with st.form("formulario_gastos_sumac", clear_on_submit=True):
         desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)")
         monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0)
@@ -368,7 +368,7 @@ with tab_gastos:
 with tab_caja:
     st.markdown("<h4 style='text-align: center; color: #CFD8DC;'>💼 Finanzas del Turno</h4>", unsafe_allow_html=True)
     
-    # Sincronización Manual para actualizar caja consolidada
+    # Sincronización Manual segura
     col_v1, col_v2 = st.columns(2)
     with col_v1:
         st.markdown("<span style='font-size: 13px; color: #CFD8DC;'>Sincronizar las ventas de todos los mozos:</span>", unsafe_allow_html=True)
