@@ -97,12 +97,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- ENCABEZADO INTEGRADO PREMIUM (YAURI CLOUD LOGO RECTANGULAR) ---
-# Se utiliza un diseño de 3 columnas para centrar el logo y que tenga un tamaño óptimo para celular
-col_l1, col_l2, col_l3 = st.columns([1, 2.5, 1])
+# --- ENCABEZADO INTEGRADO PREMIUM (YAURI CLOUD LOGO RECTANGULAR MINI) ---
+# Hemos modificado las columnas a [1.6, 1.0, 1.6] para reducir el espacio y que ocupe exactamente la mitad de antes
+col_l1, col_l2, col_l3 = st.columns([1.6, 1.0, 1.6])
 with col_l2:
     try:
-        # Busca el logo rectangular de baja altura primero de forma prioritaria
+        # Cargar logo de forma prioritariamente compacta
         if os.path.exists("yauri_cloud_logo_rectangular.png"):
             st.image("yauri_cloud_logo_rectangular.png", use_container_width=True)
         elif os.path.exists("yauri_cloud_logo_futuristic_1.png"):
