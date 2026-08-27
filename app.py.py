@@ -36,6 +36,22 @@ st.markdown("""
         color: #121212 !important;
         border-color: #FFEA00 !important;
     }
+    /* Estilo para el botón de formulario */
+    div.stFormSubmitButton > button {
+        background-color: #FF3D00 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #FF3D00 !important;
+        border-radius: 15px !important;
+        padding: 12px !important;
+        font-size: 15px !important;
+        font-weight: bold !important;
+        width: 100% !important;
+    }
+    div.stFormSubmitButton > button:active {
+        background-color: #FFEA00 !important;
+        color: #121212 !important;
+        border-color: #FFEA00 !important;
+    }
     .metric-box {
         background-color: #1E1E1E;
         padding: 15px;
@@ -70,12 +86,20 @@ st.markdown("""
         margin-bottom: 15px;
         border: 1px solid #00FF66;
     }
+    /* Quitar bordes feos del formulario en modo oscuro */
+    [data-testid="stForm"] {
+        border: 1px solid #37474F !important;
+        border-radius: 15px !important;
+        background-color: #1E1E1E !important;
+        padding: 15px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # Cabecera limpia
 st.markdown("<h1 style='text-align: center; color: #FFFFFF; margin-bottom: 0;'>🍜 CALDERÍA SUMAC</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 14px;'>📍 Sicuani, Canchis, Cusco  •  POS Ultra-Veloz ⚡</p>", unsafe_allow_html=True)
+# Removido "POS Ultra-Veloz", quedando únicamente la imagen del rayito ⚡
+st.markdown("<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 14px;'>📍 Sicuani, Canchis, Cusco  •  ⚡</p>", unsafe_allow_html=True)
 
 # --- ENLACE DE GOOGLE SHEETS COMPLETAMENTE AUTOMÁTICO ---
 API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbyEtpDsa8tPJ3LKnNmca4Smm71X1XE88egDdqdPMqHkOZbATHnunENK4Ddc5zHvpZdq_A/exec"
@@ -303,25 +327,21 @@ with tab_ventas:
 with tab_gastos:
     st.markdown("<h4 style='color: #CFD8DC;'>Anotar un Gasto de Caja:</h4>", unsafe_allow_html=True)
     
-    # Inputs con Session State inicializados
-    if "gasto_desc_input" not in st.session_state:
-        st.session_state["gasto_desc_input"] = ""
-    if "gasto_monto_input" not in st.session_state:
-        st.session_state["gasto_monto_input"] = 0.0
-
-    desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)", key="gasto_desc_input")
-    monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0, key="gasto_monto_input")
-    
-    if st.button("💾 Registrar Gasto en Caja", key="btn_registrar_gasto_web"):
-        if desc_gasto and monto_gasto > 0:
-            if registrar_movimiento_instantaneo("GASTO", desc_gasto, monto_gasto):
-                # Limpiar la memoria intermedia de forma segura para reiniciar los campos en la interfaz
-                st.session_state["gasto_desc_input"] = ""
-                st.session_state["gasto_monto_input"] = 0.0
-                st.toast(f"🔴 Gasto registrado: {desc_gasto} (S/. {monto_gasto:.2f})", icon="💸")
-                st.rerun()
-        else:
-            st.error("Por favor ingresa una descripción and un monto válido.")
+    # SOLUCIÓN DE LIMPIEZA DEFINITIVA: Usamos un Formulario nativo de Streamlit con clear_on_submit=True
+    # Esto borra automáticamente los campos de texto al presionar el botón de enviar, sin bugs de SessionState.
+    with st.form("formulario_gastos_sumac", clear_on_submit=True):
+        desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)")
+        monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0)
+        
+        btn_registrar = st.form_submit_button("💾 Registrar Gasto en Caja")
+        
+        if btn_registrar:
+            if desc_gasto and monto_gasto > 0:
+                if registrar_movimiento_instantaneo("GASTO", desc_gasto, monto_gasto):
+                    st.toast(f"🔴 Gasto registrado: {desc_gasto} (S/. {monto_gasto:.2f})", icon="💸")
+                    st.rerun()
+            else:
+                st.error("Por favor ingresa una descripción y un monto válido.")
 
     st.markdown("<br><h5 style='color: #CFD8DC;'>📋 Gastos de hoy registrados:</h5>", unsafe_allow_html=True)
     if datos["compras"]:
