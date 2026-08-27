@@ -97,24 +97,24 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- ENCABEZADO INTEGRADO PREMIUM (LOGO "YAURI CLOUD" MINI AL 30% EN LA ESQUINA SUPERIOR IZQUIERDA) ---
-# Usamos columnas muy ajustadas [0.35, 3.65] para que el logo ocupe exactamente un espacio diminuto al 30% de ancho
-col_logo, col_titulo = st.columns([0.35, 3.65])
+# --- ENCABEZADO INTEGRADO PREMIUM (LOGO "YAURI CLOUD" MINI AL 40% EN LA ESQUINA SUPERIOR IZQUIERDA) ---
+# Hemos modificado las columnas a [0.45, 3.55] para dar un espacio perfecto al logo de 64 píxeles (40% de escala)
+col_logo, col_titulo = st.columns([0.45, 3.55])
 
 with col_logo:
     try:
-        # Se carga el logotipo en un tamaño súper compacto de 48 píxeles de ancho (aproximadamente el 30% de antes)
+        # Se carga el logotipo a un ancho de 64 píxeles (10% más que la versión ultra-mini anterior de 48px)
         if os.path.exists("yauri_cloud_logo_final.png"):
-            st.image("yauri_cloud_logo_final.png", width=48)
+            st.image("yauri_cloud_logo_final.png", width=64)
         elif os.path.exists("yauri_cloud_logo_rectangular.png"):
-            st.image("yauri_cloud_logo_rectangular.png", width=48)
+            st.image("yauri_cloud_logo_rectangular.png", width=64)
         elif os.path.exists("yauri_cloud_logo_futuristic_1.png"):
-            st.image("yauri_cloud_logo_futuristic_1.png", width=48)
+            st.image("yauri_cloud_logo_futuristic_1.png", width=64)
     except Exception as e:
         pass
 
 with col_titulo:
-    st.markdown("<h2 style='color: #FFFFFF; margin: 0; padding-top: 0px; font-size: 21px; line-height: 1.1;'>🍜 CALDERÍA SUMAC</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #FFFFFF; margin: 0; padding-top: 2px; font-size: 21px; line-height: 1.1;'>🍜 CALDERÍA SUMAC</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-top: 1px;'>📍 Sicuani, Canchis • ⚡ Powered by Yauri Cloud</p>", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
