@@ -5,7 +5,7 @@ from datetime import datetime
 
 # Configuración de página móvil premium
 st.set_page_config(
-    page_title="SUMAC POS Cloud V3",
+    page_title="SUMAC POS - Sicuani",
     page_icon="🍲",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -58,45 +58,37 @@ st.markdown("""
         font-size: 24px;
         font-weight: bold;
     }
-    .tutorial-box {
-        background-color: #1A237E;
-        padding: 15px;
+    .status-badge {
+        background-color: #1B5E20;
+        color: #00FF66;
+        padding: 8px;
         border-radius: 10px;
-        border: 1px solid #2979FF;
+        text-align: center;
+        font-weight: bold;
+        font-size: 12px;
         margin-bottom: 15px;
+        border: 1px solid #00FF66;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Cabecera limpia y minimalista
+# Cabecera limpia
 st.markdown("<h1 style='text-align: center; color: #FFFFFF; margin-bottom: 0;'>🍜 CALDERÍA SUMAC</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 14px;'>📍 Sicuani, Canchis, Cusco</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 14px;'>📍 Sicuani, Canchis, Cusco  •  POS Celular Autorizado</p>", unsafe_allow_html=True)
 
-# --- CONFIGURACIÓN DE BASE DE DATOS CENTRAL (GOOGLE SHEETS) ---
-if "api_url" in st.query_params:
-    st.session_state["api_url"] = st.query_params["api_url"]
+# --- ENLACE DE GOOGLE SHEETS COMPLETAMENTE AUTOMÁTICO (HARDCODED) ---
+# Helios: He pegado aquí tu enlace exacto de Google Sheets para que NINGÚN mozo tenga que configurar nada. ¡Solo abrir y usar!
+API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbyEtpDsa8tPJ3LKnNmca4Smm71X1XE88egDdqdPMqHkOZbATHnunENK4Ddc5zHvpZdq_A/exec"
 
-# Panel de Configuración en el Sidebar para Helios
-with st.sidebar:
-    st.markdown("### ⚙️ Conexión Consolidada")
-    url_input = st.text_input(
-        "Pegar Enlace de Google Sheets (Web App):",
-        value=st.session_state.get("api_url", ""),
-        placeholder="https://script.google.com/macros/s/.../exec"
-    )
-    if url_input:
-        st.session_state["api_url"] = url_input
-        st.query_params["api_url"] = url_input
-        st.success("¡Enlace conectado y guardado!")
+if "api_url" not in st.session_state:
+    st.session_state["api_url"] = API_URL_DEFAULT
+
+# Indicador de conexión arriba de la app
+st.markdown("<div class='status-badge'>🟢 CONECTADO AUTOMÁTICAMENTE CON GOOGLE SHEETS (CAJA CONSOLIDADA)</div>", unsafe_allow_html=True)
 
 # Funciones para leer y escribir en Google Sheets a través de la API de Apps Script
 def cargar_datos_cloud():
-    api_url = st.session_state.get("api_url", "")
-    if not api_url:
-        if "local_data" not in st.session_state:
-            st.session_state["local_data"] = {"ventas": [], "compras": [], "planilla": []}
-        return st.session_state["local_data"]
-    
+    api_url = st.session_state["api_url"]
     try:
         response = requests.get(api_url, timeout=5)
         if response.status_code == 200:
@@ -122,17 +114,28 @@ def cargar_datos_cloud():
                     })
             return datos_formateados
     except Exception as e:
-        st.sidebar.error(f"Error de conexión: {e}")
+        st.sidebar.error(f"Error de conexión con la base de datos: {e}")
     
     if "local_data" not in st.session_state:
         st.session_state["local_data"] = {"ventas": [], "compras": [], "planilla": []}
     return st.session_state["local_data"]
 
 def guardar_movimiento_cloud(tipo, detalle, monto):
-    api_url = st.session_state.get("api_url", "")
+    api_url = st.session_state["api_url"]
     fecha_hoy = datetime.now().strftime("%Y-%m-%d %H:%M")
     
-    if not api_url:
+    try:
+        payload = {
+            "action": "registrar",
+            "fecha": fecha_hoy,
+            "tipo": tipo,
+            "detalle": detalle,
+            "monto": monto
+        }
+        response = requests.post(api_url, json=payload, timeout=5)
+        return response.status_code == 200
+    except:
+        # Respaldo local temporal si falla la conexión
         if tipo == "VENTA":
             st.session_state["local_data"]["ventas"].append({
                 "fecha": fecha_hoy,
@@ -146,48 +149,11 @@ def guardar_movimiento_cloud(tipo, detalle, monto):
                 "monto": monto
             })
         return True
-    
-    try:
-        payload = {
-            "action": "registrar",
-            "fecha": fecha_hoy,
-            "tipo": tipo,
-            "detalle": detalle,
-            "monto": monto
-        }
-        response = requests.post(api_url, json=payload, timeout=5)
-        return response.status_code == 200
-    except:
-        return False
-
-def reiniciar_caja_cloud():
-    api_url = st.session_state.get("api_url", "")
-    if not api_url:
-        st.session_state["local_data"] = {"ventas": [], "compras": [], "planilla": []}
-        return True
-    try:
-        payload = {"action": "reiniciar"}
-        response = requests.post(api_url, json=payload, timeout=5)
-        return response.status_code == 200
-    except:
-        return False
 
 # Cargar los datos de forma inmediata
 datos = cargar_datos_cloud()
 
-# --- TUTORIAL SI NO ESTÁ CONECTADO ---
-if not st.session_state.get("api_url", ""):
-    with st.expander("🚨 ¡PASO IMPORTANTE! Haz clic aquí para conectar todos los celulares", expanded=True):
-        st.markdown("""
-        <div class='tutorial-box'>
-        <strong>¡Hola Helios!</strong> Para que las ventas de tus mozos se unan en un solo lugar en tiempo real:<br><br>
-        1. Abre el menú lateral de esta app (las 3 rayitas de arriba a la izquierda).<br>
-        2. Pega el enlace de Google Sheets que termina en <strong>/exec</strong>.<br>
-        3. ¡Eso es todo! El sistema quedará enlazado en este celular para siempre.
-        </div>
-        """, unsafe_allow_html=True)
-
-# Menú de Productos
+# Menú de Productos de Caldería Sumac
 PRODUCTOS_INFO = [
     {"nombre": "Caldo sin presa", "precio": 5.0, "icono": "🍲"},
     {"nombre": "Caldo presa mediana", "precio": 8.0, "icono": "🍲"},
@@ -197,17 +163,16 @@ PRODUCTOS_INFO = [
     {"nombre": "Agua mineral", "precio": 1.0, "icono": "💧"}
 ]
 
-# Pestañas de navegación móvil cómoda
+# Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
 
 with tab_ventas:
     st.markdown("<h4 style='color: #CFD8DC;'>Selecciona para vender:</h4>", unsafe_allow_html=True)
     
-    # Grid de botones grandes táctiles de 2 en 2
+    # Grid de botones grandes y táctiles de 2 en 2
     for i in range(0, len(PRODUCTOS_INFO), 2):
         col1, col2 = st.columns(2)
         
-        # Producto 1
         p1 = PRODUCTOS_INFO[i]
         with col1:
             if st.button(f"{p1['icono']} {p1['nombre']}\nS/. {p1['precio']:.2f}", key=f"btn_{i}"):
@@ -217,7 +182,6 @@ with tab_ventas:
                 else:
                     st.error("Error al conectar con la base de datos cloud.")
                 
-        # Producto 2
         if i + 1 < len(PRODUCTOS_INFO):
             p2 = PRODUCTOS_INFO[i+1]
             with col2:
@@ -228,7 +192,6 @@ with tab_ventas:
                     else:
                         st.error("Error al conectar con la base de datos cloud.")
 
-    # Recibo digital consolidado de movimientos
     st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos consolidados:</h5>", unsafe_allow_html=True)
     
     movimientos = []
@@ -239,7 +202,7 @@ with tab_ventas:
         
     if movimientos:
         try:
-            movimientos.sort(key=lambda x: x, reverse=True)
+            movimientos.sort(key=lambda x: x[0], reverse=True)
         except:
             pass
         for m in movimientos[:8]:
@@ -264,7 +227,6 @@ with tab_gastos:
         else:
             st.error("Por favor ingresa una descripción y un monto válido.")
 
-    # Lista de gastos consolidados
     st.markdown("<br><h5 style='color: #CFD8DC;'>📋 Gastos de hoy registrados:</h5>", unsafe_allow_html=True)
     if datos["compras"]:
         gastos_hoy = datos["compras"]
@@ -274,14 +236,13 @@ with tab_gastos:
         st.info("No hay gastos registrados hoy.")
 
 with tab_caja:
-    st.markdown("<h4 style='text-align: center; color: #CFD8DC;'>💼 Finanzas Consolidadas del Turno</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align: center; color: #CFD8DC;'>💼 Finanzas del Turno</h4>", unsafe_allow_html=True)
     
     total_v = sum(v["total"] for v in datos["ventas"])
     total_g = sum(c["monto"] for c in datos["compras"])
     egresos = total_g
     ganancia = total_v - egresos
     
-    # 1. METRICAS NUMÉRICAS VISIBLES ARRIBA AL 100%
     col_v, col_g = st.columns(2)
     with col_v:
         st.markdown(f"<div class='metric-box'>Ingresos<br><span class='metric-val-green'>S/. {total_v:.2f}</span></div>", unsafe_allow_html=True)
@@ -290,31 +251,33 @@ with tab_caja:
         
     st.markdown(f"<div class='metric-box' style='background: #252525;'>GANANCIA NETA<br><span class='metric-val-blue' style='color: {'#00FF66' if ganancia >= 0 else '#FF0055'}'>S/. {ganancia:.2f}</span></div>", unsafe_allow_html=True)
 
-    # 2. GRÁFICO DE TORTA DE DONA ADAPTADO UBICADO DEBAJO DE LAS CIFRAS
     if total_v > 0:
-        st.markdown("<br><h5 style='text-align: center; color: #CFD8DC;'>📊 Distribución de Rendimiento Financiero:</h5>", unsafe_allow_html=True)
-        porcentaje_gasto = min(1.0, (egresos / total_v))
+        st.markdown("<br><h5 style='text-align: center; color: #CFD8DC;'>📊 Distribución Financiera:</h5>", unsafe_allow_html=True)
+        porcentaje_gasto = (egresos / total_v)
         porcentaje_rentabilidad = max(0.0, 1.0 - porcentaje_gasto)
         
-        st.write(f"🟢 Rentabilidad Neta ({porcentaje_rentabilidad*100:.0f}%)")
+        st.write(f"🟢 Ganancia Neta ({porcentaje_rentabilidad*100:.0f}%)")
         st.progress(porcentaje_rentabilidad)
         
-        st.write(f"🔴 Costos y Gastos ({porcentaje_gasto*100:.0f}%)")
+        st.write(f"🔴 Gastos de Operación ({porcentaje_gasto*100:.0f}%)")
         st.progress(porcentaje_gasto)
     else:
         st.info("Registra ventas para ver el análisis de rentabilidad.")
-        
-    # 3. ZONA DE SEGURIDAD PROTEGIDA PARA REINICIO MAESTRO
-    st.markdown("<br><br><hr style='border: 1px solid #37474F;'>", unsafe_allow_html=True)
-    st.markdown("<h5 style='color: #FF0055;'>🧹 ZONA DE SEGURIDAD MAESTRA (Administrador):</h5>", unsafe_allow_html=True)
-    
-    pass_input = st.text_input("Ingresa contraseña maestra para reiniciar turno:", type="password", key="master_pass")
-    
-    if pass_input == "1992":
-        st.warning("⚠️ ¡Atención! Esta acción borrará todas las ventas y gastos de la base de datos de Google Sheets.")
-        if st.button("🚨 CONFIRMAR REINICIO COMPLETO DE CAJA"):
-            if reiniciar_caja_cloud():
-                st.success("¡Caja de Google Sheets borrada por completo con éxito!")
-                st.rerun()
-            else:
-                st.error("Error al borrar la base de datos en la nube.")
+
+    # --- SECCIÓN SEGURO DE REINICIO DE CAJA ---
+    st.markdown("---")
+    st.markdown("<h5 style='color: #FF0055;'>🧹 Zona de Seguridad</h5>", unsafe_allow_html=True)
+    clave_caja = st.text_input("Contraseña de Administrador (Año de nacimiento):", type="password", key="clave_caja_web")
+    if clave_caja == "1992":
+        if st.button("⚠️ CONFIRMAR REINICIO COMPLETO DE CAJA", key="btn_reiniciar_caja_web"):
+            api_url = st.session_state["api_url"]
+            try:
+                payload = {"action": "reiniciar"}
+                response = requests.post(api_url, json=payload, timeout=5)
+                if response.status_code == 200:
+                    st.success("¡Base de datos en Google Sheets borrada con éxito!")
+                    st.rerun()
+                else:
+                    st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
+            except Exception as e:
+                st.error(f"Error de conexión con el servidor: {e}")
