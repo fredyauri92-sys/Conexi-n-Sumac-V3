@@ -103,7 +103,7 @@ col_logo, col_titulo = st.columns([0.45, 3.55])
 
 with col_logo:
     try:
-        # Se carga el logotipo a un ancho de 64 píxeles (10% más que la versión ultra-mini anterior de 48px)
+        # Se carga el logotipo a un ancho de 64 píxeles (scale 40%)
         if os.path.exists("yauri_cloud_logo_final.png"):
             st.image("yauri_cloud_logo_final.png", width=64)
         elif os.path.exists("yauri_cloud_logo_rectangular.png"):
@@ -115,7 +115,8 @@ with col_logo:
 
 with col_titulo:
     st.markdown("<h2 style='color: #FFFFFF; margin: 0; padding-top: 2px; font-size: 21px; line-height: 1.1;'>🍜 CALDERÍA SUMAC</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-top: 1px;'>📍 Sicuani, Canchis • ⚡ Powered by Yauri Cloud</p>", unsafe_allow_html=True)
+    # Helios: Se eliminó el texto "Powered by Yauri Cloud" manteniendo únicamente la ubicación y el rayo ⚡
+    st.markdown("<p style='color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-top: 1px;'>📍 Sicuani, Canchis • ⚡</p>", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
