@@ -290,13 +290,13 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenar por fecha de más reciente a más antiguo
-            movimientos.sort(key=lambda x: x, reverse=True)
+            movimientos.sort(key=lambda x: x[0], reverse=True)
         except:
             pass
-        for m in movimientos[:8]:
-            color_txt = "#00FF66" if "VENTA" in m else "#FF0055"
-            hora = m.split()[-1] if " " in m else ""
-            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{m}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(m):.2f} ({hora})</span></div>", unsafe_allow_html=True)
+        for fecha, detalle, monto in movimientos[:8]:
+            color_txt = "#00FF66" if "VENTA" in detalle else "#FF0055"
+            hora = fecha.split()[-1] if " " in fecha else ""
+            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{detalle}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(monto):.2f} ({hora})</span></div>", unsafe_allow_html=True)
     else:
         st.info("No hay movimientos registrados hoy.")
 
@@ -321,7 +321,7 @@ with tab_gastos:
                 st.toast(f"🔴 Gasto registrado: {desc_gasto} (S/. {monto_gasto:.2f})", icon="💸")
                 st.rerun()
         else:
-            st.error("Por favor ingresa una descripción y un monto válido.")
+            st.error("Por favor ingresa una descripción and un monto válido.")
 
     st.markdown("<br><h5 style='color: #CFD8DC;'>📋 Gastos de hoy registrados:</h5>", unsafe_allow_html=True)
     if datos["compras"]:
