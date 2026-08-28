@@ -4,7 +4,7 @@ import json
 import threading
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Configuración de página móvil premium
 st.set_page_config(
@@ -111,7 +111,7 @@ def reproducir_sonido():
     try {
         var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        // Tono 1 (Monedita inicial de caja registradora)
+        // Tono 1 (Monedita de caja registradora)
         var osc1 = audioCtx.createOscillator();
         var gain1 = audioCtx.createGain();
         osc1.type = 'triangle';
@@ -211,7 +211,8 @@ def enviar_a_sheets_bg(api_url, payload):
 
 def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
-    fecha_hoy = datetime.now().strftime("%Y-%m-%d %H:%M")
+    # Obtener la hora actual de Sicuani (Perú) que es UTC-5
+    fecha_hoy = (datetime.utcnow() - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S")
     
     # 1. Registrar LOCALMENTE en la memoria (caché) para actualizar la pantalla en MILISEGUNDOS
     if tipo == "VENTA":
@@ -269,23 +270,40 @@ def contar_vendidos_hoy(nombre_base):
             total += 1
     return total
 
-# Función para extraer la hora (HH:MM) de forma 100% segura
+# Función súper robusta para extraer la hora (HH:MM AM/PM) de cualquier formato de fecha
 def extraer_hora(fecha_str):
     if not fecha_str:
         return "--:--"
-    if "T" in fecha_str:
-        parts = fecha_str.split("T")
-        if len(parts) > 1:
-            return parts[1][:5]
-    if " " in fecha_str:
-        parts = fecha_str.split()
-        if len(parts) > 1:
-            return parts[1][:5]
-    if ":" in fecha_str:
-        match = re.search(r'(\d{1,2}:\d{2})', fecha_str)
+    try:
+        is_utc = False
+        if fecha_str.endswith("Z") or "+00" in fecha_str:
+            is_utc = True
+        
+        # Limpiar caracteres ISO
+        clean_str = re.sub(r"([+-]\d{2}:\d{2}|Z)$", "", fecha_str)
+        clean_str = clean_str.replace("T", " ")
+        
+        if len(clean_str) > 16:
+            dt = datetime.strptime(clean_str[:19], "%Y-%m-%d %H:%M:%S")
+        else:
+            dt = datetime.strptime(clean_str[:16], "%Y-%m-%d %H:%M")
+            
+        if is_utc:
+            dt = dt - timedelta(hours=5)
+    except Exception:
+        # Fallback de emergencia por regex con formato AM/PM
+        match = re.search(r"(\d{1,2}):(\d{2})", fecha_str)
         if match:
-            return match.group(1)
-    return fecha_str[-5:] if len(fecha_str) >= 5 else fecha_str
+            hh = int(match.group(1))
+            mm = match.group(2)
+            ampm = "PM" if hh >= 12 else "AM"
+            hh_12 = hh % 12
+            if hh_12 == 0:
+                hh_12 = 12
+            return f"{hh_12:02d}:{mm} {ampm}"
+        return fecha_str
+    
+    return dt.strftime("%I:%M %p")
 
 # Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
@@ -307,11 +325,11 @@ with tab_ventas:
             cant1 = contar_vendidos_hoy(p1["nombre"])
             es_caldo1 = p1.get("lleva_taper", False)
             
-            # 2. Descripción del Caldo y su Valor (Sin Hora)
+            # 2. Descripción del Caldo y su Valor (Limpio de Horas molestas)
             st.markdown(f"**🍲 {p1['nombre']}**")
             st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p1['precio']:.2f}</p>", unsafe_allow_html=True)
             
-            # 3. Botón de Caldo Base (Registra al instante de forma independiente)
+            # 3. Botón de Caldo Base (Registra de manera independiente al instante)
             label_p1 = f"🛒 Registrar Caldo\n[ S/. {p1['precio']:.2f} | Hoy: {cant1} ]"
             if st.button(label_p1, key=f"btn_sell_caldo_{i}"):
                 if registrar_movimiento_instantaneo("VENTA", p1["nombre"], p1["precio"]):
@@ -319,7 +337,7 @@ with tab_ventas:
                     st.session_state["reproducir_sonido"] = True
                     st.rerun()
             
-            # 4. Botones de Modificadores (Registro directo e independiente al instante)
+            # 4. Botones de Modificadores (Registro directo y asociado exactamente al caldo correspondiente)
             if es_caldo1:
                 st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
                 
@@ -335,7 +353,7 @@ with tab_ventas:
                 with col_txt_h:
                     st.markdown("<span style='font-size: 12px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 6px;'>🥚 S/. 1.00</span>", unsafe_allow_html=True)
                 
-                # Botón independiente de Táper de Litro (Registra directamente al tocar la ➕)
+                # Botón independiente de Táper de Litro (Asociado al Caldo actual)
                 col_btn_t, col_txt_t = st.columns([0.4, 0.6])
                 with col_btn_t:
                     if st.button("➕", key=f"btn_t_indep_{i}"):
@@ -374,7 +392,7 @@ with tab_ventas:
                         st.session_state["reproducir_sonido"] = True
                         st.rerun()
                 
-                # Botones de Modificadores (Registro independiente)
+                # Botones de Modificadores (Asociados al Caldo correspondiente)
                 if es_caldo2:
                     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
                     
