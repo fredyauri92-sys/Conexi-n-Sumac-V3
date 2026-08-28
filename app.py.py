@@ -366,43 +366,6 @@ def contar_vendidos_hoy(nombre_base):
             total += 1
     return total
 
-# Función súper robusta para extraer la hora (HH:MM AM/PM) de cualquier formato de fecha
-def extraer_hora(fecha_str):
-    if not fecha_str:
-        return "--:--"
-    try:
-        clean_str = fecha_str.replace("T", " ").replace("Z", "")
-        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})$", "", clean_str)
-        
-        if len(clean_str) > 16:
-            dt = datetime.strptime(clean_str[:19], "%Y-%m-%d %H:%M:%S")
-        else:
-            dt = datetime.strptime(clean_str[:16], "%Y-%m-%d %H:%M")
-            
-        is_utc = False
-        if "Z" in fecha_str or "+00" in fecha_str or "GMT" in fecha_str:
-            is_utc = True
-        else:
-            ahora_peru = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=5)
-            if dt > ahora_peru + timedelta(hours=1):
-                is_utc = True
-                
-        if is_utc:
-            dt = dt - timedelta(hours=5)
-    except Exception:
-        match = re.search(r"(\d{1,2}):(\d{2})", fecha_str)
-        if match:
-            hh = int(match.group(1))
-            mm = match.group(2)
-            ampm = "PM" if hh >= 12 else "AM"
-            hh_12 = hh % 12
-            if hh_12 == 0:
-                hh_12 = 12
-            return f"{hh_12:02d}:{mm} {ampm}"
-        return fecha_str
-    
-    return dt.strftime("%I:%M %p")
-
 # --- FUNCIÓN SUPER ROBUSTA Y OPTIMIZADA PARA OBTENER BASE64 DE IMAGEN EN CUALQUIER ENTORNO ---
 @st.cache_data
 def get_image_base64(img_path):
@@ -546,6 +509,43 @@ if "imagenes_base64" not in st.session_state or len(st.session_state["imagenes_b
     for p in PRODUCTOS_INFO:
         img_n = p["imagen"]
         st.session_state["imagenes_base64"][img_n] = get_image_base64(img_n)
+
+# Función súper robusta para extraer la hora (HH:MM AM/PM) de cualquier formato de fecha
+def extraer_hora(fecha_str):
+    if not fecha_str:
+        return "--:--"
+    try:
+        clean_str = fecha_str.replace("T", " ").replace("Z", "")
+        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})$", "", clean_str)
+        
+        if len(clean_str) > 16:
+            dt = datetime.strptime(clean_str[:19], "%Y-%m-%d %H:%M:%S")
+        else:
+            dt = datetime.strptime(clean_str[:16], "%Y-%m-%d %H:%M")
+            
+        is_utc = False
+        if "Z" in fecha_str or "+00" in fecha_str or "GMT" in fecha_str:
+            is_utc = True
+        else:
+            ahora_peru = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=5)
+            if dt > ahora_peru + timedelta(hours=1):
+                is_utc = True
+                
+        if is_utc:
+            dt = dt - timedelta(hours=5)
+    except Exception:
+        match = re.search(r"(\d{1,2}):(\d{2})", fecha_str)
+        if match:
+            hh = int(match.group(1))
+            mm = match.group(2)
+            ampm = "PM" if hh >= 12 else "AM"
+            hh_12 = hh % 12
+            if hh_12 == 0:
+                hh_12 = 12
+            return f"{hh_12:02d}:{mm} {ampm}"
+        return fecha_str
+    
+    return dt.strftime("%I:%M %p")
 
 # Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
@@ -897,7 +897,7 @@ with tab_gastos:
                     st.session_state["reproducir_sonido"] = True
                     st.rerun()
             else:
-                st.error("Por favor ingresa una descripción and un monto válido.")
+                st.error("Por favor ingresa una descripción y un monto válido.")
 
     st.markdown("<br><h5 style='color: #CFD8DC;'>📋 Gastos de hoy registrados:</h5>", unsafe_allow_html=True)
     if datos["compras"]:
@@ -972,4 +972,3 @@ with tab_caja:
                         st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
                 except Exception as e:
                     st.error(f"Error de conexión con el servidor: {e}")
-,TargetFile:/workspace/scratch/app.py}
