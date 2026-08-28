@@ -354,9 +354,13 @@ def extraer_hora(fecha_str):
     
     return dt.strftime("%I:%M %p")
 
-# --- FUNCIÓN SUPER ROBUSTA PARA OBTENER BASE64 DE IMAGEN EN CUALQUIER ENTORNO ---
+# --- FUNCIÓN SUPER ROBUSTA Y OPTIMIZADA PARA OBTENER BASE64 DE IMAGEN EN CUALQUIER ENTORNO ---
 def get_image_base64(img_path):
     import base64
+    import os
+    from PIL import Image
+    import io
+    
     if not img_path:
         return ""
     
@@ -370,13 +374,34 @@ def get_image_base64(img_path):
         os.path.join("/mount/src/conexi-n-sumac-v3", img_path)
     ]
     
+    ruta_encontrada = None
     for ruta in posibles_rutas:
         if os.path.exists(ruta):
-            try:
-                with open(ruta, "rb") as f:
-                    return base64.b64encode(f.read()).decode("utf-8")
-            except Exception:
-                pass
+            ruta_encontrada = ruta
+            break
+            
+    if not ruta_encontrada:
+        return ""
+        
+    try:
+        # Abrir la imagen con PIL para redimensionarla y comprimirla dramáticamente
+        img = Image.open(ruta_encontrada)
+        
+        # Redimensionar para que sea súper ligera y quepa perfectamente en el botón
+        img.thumbnail((120, 120), Image.Resampling.LANCZOS)
+        
+        # Guardar en formato PNG optimizado dentro de un buffer de memoria
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG", optimize=True)
+        
+        return base64.b64encode(buffer.getvalue()).decode("utf-8")
+    except Exception as e:
+        # Fallback de seguridad en caso de que PIL falle
+        try:
+            with open(ruta_encontrada, "rb") as f:
+                return base64.b64encode(f.read()).decode("utf-8")
+        except Exception:
+            pass
     return ""
 
 # Pestañas de navegación móvil cómoda en la parte superior
