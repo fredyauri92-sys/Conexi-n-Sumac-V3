@@ -102,6 +102,54 @@ st.markdown("""
         background-color: #1E1E1E !important;
         padding: 15px !important;
     }
+
+    /* Estilo premium para los botones directos de Huevo Extra (Huevo aumentado un 50% en tamaño) */
+    div.stButton > button[id*="btn_h_indep_"] {
+        background-color: #1E1E1E !important;
+        color: #00FF66 !important;
+        border: 2px solid #00FF66 !important;
+        border-radius: 12px !important;
+        padding: 10px 14px !important;
+        font-size: 20px !important; /* Aumentado 50% en tamaño visual */
+        font-weight: bold !important;
+        width: 100% !important;
+        box-shadow: 0px 4px 10px rgba(0, 255, 102, 0.1) !important;
+        transition: all 0.2s ease-in-out !important;
+        margin-bottom: 5px !important;
+    }
+    div.stButton > button[id*="btn_h_indep_"]:hover {
+        transform: scale(1.05) !important;
+        background-color: #00FF66 !important;
+        color: #121212 !important;
+        box-shadow: 0px 6px 15px rgba(0, 255, 102, 0.35) !important;
+    }
+    div.stButton > button[id*="btn_h_indep_"]:active {
+        transform: scale(0.97) !important;
+    }
+
+    /* Estilo premium para los botones directos de Táper */
+    div.stButton > button[id*="btn_t_indep_"] {
+        background-color: #1E1E1E !important;
+        color: #2979FF !important;
+        border: 2px solid #2979FF !important;
+        border-radius: 12px !important;
+        padding: 8px 12px !important;
+        font-size: 15px !important;
+        font-weight: bold !important;
+        width: 100% !important;
+        box-shadow: 0px 4px 10px rgba(41, 121, 255, 0.1) !important;
+        transition: all 0.2s ease-in-out !important;
+        margin-bottom: 10px !important;
+    }
+    div.stButton > button[id*="btn_t_indep_"]:hover {
+        transform: scale(1.05) !important;
+        background-color: #2979FF !important;
+        color: #FFFFFF !important;
+        box-shadow: 0px 6px 15px rgba(41, 121, 255, 0.35) !important;
+    }
+    div.stButton > button[id*="btn_t_indep_"]:active {
+        transform: scale(0.97) !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -421,6 +469,106 @@ def get_image_base64(img_path):
             pass
     return "" 
 
+
+# --- ESTADO INICIAL DEL SPLASH SCREEN ---
+if "splash_done" not in st.session_state:
+    st.session_state["splash_done"] = False
+
+def render_splash():
+    import base64
+    from PIL import Image
+    import io
+    
+    b64_logo = ""
+    posibles_logos = [
+        "yauri_cloud_logo_final.png",
+        "yauri_cloud_logo.png",
+        "yauri_cloud_logo_rectangular.png"
+    ]
+    logo_path = None
+    for l in posibles_logos:
+        if os.path.exists(l):
+            logo_path = l
+            break
+        elif os.path.exists(os.path.join("/workspace/artifacts", l)):
+            logo_path = os.path.join("/workspace/artifacts", l)
+            break
+            
+    if logo_path:
+        try:
+            img = Image.open(logo_path)
+            img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG", optimize=True)
+            b64_logo = base64.b64encode(buf.getvalue()).decode("utf-8")
+        except Exception:
+            pass
+            
+    # Splash Screen HTML Full Screen
+    splash_html = f"""
+    <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: #121212;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 999999;
+    ">
+        <div style="text-align: center; animation: pulse 1.5s infinite alternate;">
+            {f'<img src="data:image/png;base64,{b64_logo}" style="width: 180px; height: auto; border-radius: 20px; box-shadow: 0px 8px 25px rgba(255, 234, 0, 0.3); border: 2px solid #37474F;" />' if b64_logo else '<h1 style="color: #FFEA00; font-family: sans-serif; font-size: 28px;">⚡ YAURI CLOUD</h1>'}
+            <div style="margin-top: 25px; color: #FFFFFF; font-family: sans-serif; font-size: 18px; font-weight: bold; letter-spacing: 2px;">
+                YAURI CLOUD
+            </div>
+            <div style="margin-top: 5px; color: #888888; font-family: sans-serif; font-size: 12px; letter-spacing: 1px;">
+                Cargando Caldería Sumac...
+            </div>
+            <div style="margin-top: 20px; display: inline-block; width: 40px; height: 40px; border: 3px solid rgba(255, 234, 0, 0.2); border-radius: 50%; border-top-color: #FFEA00; animation: spin 0.8s linear infinite;"></div>
+        </div>
+    </div>
+    <style>
+    @keyframes spin {{
+        0% {{ transform: rotate(0deg); }}
+        100% {{ transform: rotate(360deg); }}
+    }}
+    @keyframes pulse {{
+        0% {{ transform: scale(0.98); }}
+        100% {{ transform: scale(1.02); }}
+    }}
+    body {{
+        overflow: hidden !important;
+    }}
+    </style>
+    """
+    st.markdown(splash_html, unsafe_allow_html=True)
+
+if not st.session_state["splash_done"]:
+    render_splash()
+    
+    # Pre-cache all base64 images in background during these 2 seconds!
+    if "imagenes_base64" not in st.session_state:
+        st.session_state["imagenes_base64"] = {}
+    for p in PRODUCTOS_INFO:
+        img_n = p["imagen"]
+        if img_n not in st.session_state["imagenes_base64"]:
+            st.session_state["imagenes_base64"][img_n] = get_image_base64(img_n)
+            
+    import time
+    time.sleep(1.8)
+    st.session_state["splash_done"] = True
+    st.rerun()
+
+# Ensure images are cached even if splash was already done on a different reload
+if "imagenes_base64" not in st.session_state or len(st.session_state["imagenes_base64"]) == 0:
+    st.session_state["imagenes_base64"] = {}
+    for p in PRODUCTOS_INFO:
+        img_n = p["imagen"]
+        st.session_state["imagenes_base64"][img_n] = get_image_base64(img_n)
+
 # Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
 
@@ -438,7 +586,9 @@ with tab_ventas:
             es_caldo1 = p1.get("lleva_taper", False)
             
             # 1. Anclaje específico y estilo CSS súper acotado para evitar fugas a otros elementos o pestañas
-            b64_img1 = get_image_base64(p1["imagen"])
+            b64_img1 = st.session_state.get("imagenes_base64", {}).get(p1["imagen"], "")
+            if not b64_img1:
+                b64_img1 = get_image_base64(p1["imagen"])
             st.markdown(f"""
             <div id="target-anchor-{i}"></div>
             <style>
@@ -484,33 +634,25 @@ with tab_ventas:
             st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 14px;'>🍲 {p1['nombre']}</div>", unsafe_allow_html=True)
             st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p1['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 8px;'>• Hoy: {cant1}</span></p>", unsafe_allow_html=True)
             
-            # Botones de Modificadores (Asociado exactamente al caldo correspondiente)
+            # Botones de Modificadores Directos (Sin signo más, huevo un 50% más grande y táctiles)
             if es_caldo1:
                 st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
                 
-                # Botón independiente de Huevo Extra (Registra directamente al tocar la ➕)
-                col_btn_h, col_txt_h = st.columns([0.4, 0.6])
-                with col_btn_h:
-                    if st.button("➕", key=f"btn_h_indep_{i}"):
-                        nombre_huevo = f"{p1['nombre']} (+1 huevo)"
-                        if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
-                            st.toast(f"🥚 +1 Huevo registrado", icon="🥚")
-                            st.session_state["reproducir_sonido"] = True
-                            st.rerun()
-                with col_txt_h:
-                    st.markdown("<span style='font-size: 26px; vertical-align: middle;'>🥚</span> <span style='font-size: 13px; color: #00FF66; font-weight: bold; vertical-align: middle;'>Huevo S/. 1.00</span>", unsafe_allow_html=True)
+                # Botón premium directo de Huevo Extra (Se registra al tocar el botón del huevo)
+                if st.button("🥚 Huevo S/. 1.00", key=f"btn_h_indep_{i}"):
+                    nombre_huevo = f"{p1['nombre']} (+1 huevo)"
+                    if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
+                        st.toast(f"🥚 +1 Huevo registrado", icon="🥚")
+                        st.session_state["reproducir_sonido"] = True
+                        st.rerun()
                 
-                # Botón independiente de Táper de Litro (Asociado al Caldo actual)
-                col_btn_t, col_txt_t = st.columns([0.4, 0.6])
-                with col_btn_t:
-                    if st.button("➕", key=f"btn_t_indep_{i}"):
-                        nombre_taper = f"{p1['nombre']} (en táper)"
-                        if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
-                            st.toast(f"🛍️ +1 Táper registrado", icon="🛍️")
-                            st.session_state["reproducir_sonido"] = True
-                            st.rerun()
-                with col_txt_t:
-                    st.markdown("<span style='font-size: 26px; vertical-align: middle;'>🛍️</span> <span style='font-size: 13px; color: #00FF66; font-weight: bold; vertical-align: middle;'>Táper S/. 1.00</span>", unsafe_allow_html=True)
+                # Botón premium directo de Táper de Litro
+                if st.button("🛍️ Táper S/. 1.00", key=f"btn_t_indep_{i}"):
+                    nombre_taper = f"{p1['nombre']} (en táper)"
+                    if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
+                        st.toast(f"🛍️ +1 Táper registrado", icon="🛍️")
+                        st.session_state["reproducir_sonido"] = True
+                        st.rerun()
                 
         # ---- PRODUCTO 2 ----
         if i + 1 < len(PRODUCTOS_INFO):
@@ -521,7 +663,9 @@ with tab_ventas:
                 icono_p2 = p2.get("icono", "🥤")
                 
                 # 1. Anclaje específico y estilo CSS súper acotado para evitar fugas a otros elementos o pestañas
-                b64_img2 = get_image_base64(p2["imagen"])
+                b64_img2 = st.session_state.get("imagenes_base64", {}).get(p2["imagen"], "")
+                if not b64_img2:
+                    b64_img2 = get_image_base64(p2["imagen"])
                 st.markdown(f"""
                 <div id="target-anchor-{i+1}"></div>
                 <style>
@@ -567,33 +711,25 @@ with tab_ventas:
                 st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 14px;'>{icono_p2} {p2['nombre']}</div>", unsafe_allow_html=True)
                 st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p2['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 8px;'>• Hoy: {cant2}</span></p>", unsafe_allow_html=True)
                 
-                # Botones de Modificadores (Asociados al Caldo correspondiente)
+                # Botones de Modificadores Directos (Sin signo más, huevo un 50% más grande y táctiles)
                 if es_caldo2:
                     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
                     
-                    # Botón independiente de Huevo Extra
-                    col_btn_h2, col_txt_h2 = st.columns([0.4, 0.6])
-                    with col_btn_h2:
-                        if st.button("➕", key=f"btn_h_indep_{i+1}"):
-                            nombre_huevo = f"{p2['nombre']} (+1 huevo)"
-                            if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
-                                st.toast(f"🥚 +1 Huevo registrado", icon="🥚")
-                                st.session_state["reproducir_sonido"] = True
-                                st.rerun()
-                    with col_txt_h2:
-                        st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🥚</span> <span style='font-size: 13px; color: #00FF66; font-weight: bold; vertical-align: middle;'>Huevo S/. 1.00</span>", unsafe_allow_html=True)
+                    # Botón premium directo de Huevo Extra (Se registra al tocar el botón del huevo)
+                    if st.button("🥚 Huevo S/. 1.00", key=f"btn_h_indep_{i+1}"):
+                        nombre_huevo = f"{p2['nombre']} (+1 huevo)"
+                        if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
+                            st.toast(f"🥚 +1 Huevo registrado", icon="🥚")
+                            st.session_state["reproducir_sonido"] = True
+                            st.rerun()
                     
-                    # Botón independiente de Táper de Litro
-                    col_btn_t2, col_txt_t2 = st.columns([0.4, 0.6])
-                    with col_btn_t2:
-                        if st.button("➕", key=f"btn_t_indep_{i+1}"):
-                            nombre_taper = f"{p2['nombre']} (en táper)"
-                            if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
-                                st.toast(f"🛍️ +1 Táper registrado", icon="🛍️")
-                                st.session_state["reproducir_sonido"] = True
-                                st.rerun()
-                    with col_txt_t2:
-                        st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🛍️</span> <span style='font-size: 13px; color: #00FF66; font-weight: bold; vertical-align: middle;'>Táper S/. 1.00</span>", unsafe_allow_html=True)
+                    # Botón premium directo de Táper de Litro
+                    if st.button("🛍️ Táper S/. 1.00", key=f"btn_t_indep_{i+1}"):
+                        nombre_taper = f"{p2['nombre']} (en táper)"
+                        if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
+                            st.toast(f"🛍️ +1 Táper registrado", icon="🛍️")
+                            st.session_state["reproducir_sonido"] = True
+                            st.rerun()
 
     # Lanzador de sonido
     if st.session_state["reproducir_sonido"]:
@@ -611,7 +747,7 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenamos cronológicamente de fin a inicio (el más nuevo primero) usando datetime real
-            movimientos.sort(key=lambda x: obtener_datetime_sort(x[0]), reverse=True)
+            movimientos.sort(key=lambda x: obtener_datetime_sort(x), reverse=True)
         except Exception:
             # Si falla, simplemente revertimos el orden de registro original (Sheets los entrega de inicio a fin)
             movimientos.reverse()
