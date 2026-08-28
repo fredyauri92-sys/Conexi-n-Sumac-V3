@@ -123,13 +123,32 @@ st.markdown("""
         margin: 0 !important;
     }
 
-    /* Centrar perfectamente la foto del caldo, descripción y precio en una sola recta vertical */
-    div[data-testid="column"]:has(div[id*="target-anchor-"]) {
+    /* Centrar perfectamente cada contenedor de elemento (imagen, descripción, precio) en la recta vertical */
+    div[data-testid="column"]:has(div[id*="target-anchor-"]) div.element-container {
         display: flex !important;
-        flex-direction: column !important;
+        justify-content: center !important;
         align-items: center !important;
         text-align: center !important;
-        justify-content: flex-start !important;
+        width: 100% !important;
+    }
+
+    /* Forzar que el Markdown llene todo el ancho y se centre */
+    div[data-testid="column"]:has(div[id*="target-anchor-"]) .stMarkdown {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }
+    div[data-testid="column"]:has(div[id*="target-anchor-"]) .stMarkdown > div {
+        width: 100% !important;
+        text-align: center !important;
+    }
+
+    /* Asegurar que el stButton dentro de la columna esté centrado */
+    div[data-testid="column"]:has(div[id*="target-anchor-"]) div[data-testid="stButton"] {
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
     }
 
     /* Estilo premium para los botones unificados de modificadores (Huevo / Táper) */
@@ -332,11 +351,11 @@ def enviar_a_sheets_bg(api_url, payload):
 
 def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
-    # Obtener la hora actual de Sicuani (Perú) que es UTC-5
+    # ... Sicuani (Perú) UTC-5
     ahora = datetime.now(timezone.utc) - timedelta(hours=5)
     fecha_hoy = ahora.strftime("%Y-%m-%d %H:%M:%S")
     
-    # 1. Registrar LOCALMENTE en la memoria (caché) para actualizar la pantalla en MILISEGUNDOS
+    # 1. Registrar LOCALMENTE en la memoria (caché)
     if tipo == "VENTA":
         st.session_state["datos_cache"]["ventas"].append({
             "fecha": fecha_hoy,
@@ -352,7 +371,7 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
             "dt": ahora
         })
         
-    # 2. Disparar el envío a Google Sheets de forma ASÍNCRONA (en segundo plano)
+    # 2. Disparar el envío a Google Sheets asíncronamente
     payload = {
         "action": "registrar",
         "fecha": fecha_hoy,
@@ -518,7 +537,7 @@ def render_splash():
 if not st.session_state["splash_done"]:
     render_splash()
     
-    # Pre-cache de imágenes base64 para acelerar al máximo el renderizado (Cero retraso en clics)
+    # Pre-cache de imágenes base64 para acelerar al máximo el renderizado
     if "imagenes_base64" not in st.session_state:
         st.session_state["imagenes_base64"] = {}
     for p in PRODUCTOS_INFO:
@@ -618,7 +637,7 @@ with tab_ventas:
                 overflow: hidden !important;
                 transition: transform 0.2s, box-shadow 0.2s !important;
                 display: block !important;
-                margin: 0 auto 3px auto !important;
+                margin: 0 !important;
             }}
             div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
                 transform: scale(1.05) !important;
