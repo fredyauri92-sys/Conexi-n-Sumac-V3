@@ -380,6 +380,22 @@ def get_image_base64(img_path):
             ruta_encontrada = ruta
             break
             
+    # Fallbacks inteligentes si la imagen no existe física en el servidor de producción (GitHub/Streamlit Cloud)
+    if not ruta_encontrada:
+        fallback_map = {
+            "caldo_sin_presa.png": "caldo_presa_grande.png",
+            "caldo_sicuani.png": "caldo_presa_grande.png",
+            "agua_san_luis.png": "gaseosas_personales.png"
+        }
+        fallback_name = fallback_map.get(os.path.basename(img_path))
+        if fallback_name:
+            for ruta in posibles_rutas:
+                ruta_dir = os.path.dirname(ruta)
+                ruta_fallback = os.path.join(ruta_dir, fallback_name) if ruta_dir else fallback_name
+                if os.path.exists(ruta_fallback):
+                    ruta_encontrada = ruta_fallback
+                    break
+
     if not ruta_encontrada:
         return ""
         
@@ -402,7 +418,7 @@ def get_image_base64(img_path):
                 return base64.b64encode(f.read()).decode("utf-8")
         except Exception:
             pass
-    return ""
+    return "" 
 
 # Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
@@ -420,13 +436,14 @@ with tab_ventas:
             cant1 = contar_vendidos_hoy(p1["nombre"])
             es_caldo1 = p1.get("lleva_taper", False)
             
-            # Contenedor único para aplicar estilo de imagen de fondo al botón principal
-            st.markdown(f'<div class="product-column" id="prod-col-{i}">', unsafe_allow_html=True)
+            # 1. Ancla invisible para identificar la ubicación exacta del botón en el DOM
+            st.markdown(f'<div id="target-anchor-{i}"></div>', unsafe_allow_html=True)
             
+            # 2. Inyectar CSS global dinámico para convertir el st.button adyacente en la imagen clickable
             b64_img1 = get_image_base64(p1["imagen"])
             st.markdown(f"""
             <style>
-            #prod-col-{i} div[data-testid="stButton"]:first-of-type button {{
+            div:has(#target-anchor-{i}) + div div[data-testid="stButton"] button {{
                 background-image: url(data:image/png;base64,{b64_img1}) !important;
                 background-color: transparent !important;
                 background-repeat: no-repeat !important;
@@ -443,15 +460,15 @@ with tab_ventas:
                 display: block !important;
                 margin: 0 auto 5px auto !important;
             }}
-            #prod-col-{i} div[data-testid="stButton"]:first-of-type button:hover {{
+            div:has(#target-anchor-{i}) + div div[data-testid="stButton"] button:hover {{
                 transform: scale(1.05) !important;
                 box-shadow: 0px 6px 15px rgba(255, 234, 0, 0.4) !important;
                 border-color: #FFEA00 !important;
             }}
-            #prod-col-{i} div[data-testid="stButton"]:first-of-type button:active {{
+            div:has(#target-anchor-{i}) + div div[data-testid="stButton"] button:active {{
                 transform: scale(0.98) !important;
             }}
-            #prod-col-{i} div[data-testid="stButton"]:first-of-type button * {{
+            div:has(#target-anchor-{i}) + div div[data-testid="stButton"] button * {{
                 display: none !important;
             }}
             </style>
@@ -495,8 +512,6 @@ with tab_ventas:
                             st.rerun()
                 with col_txt_t:
                     st.markdown("<span style='font-size: 26px; vertical-align: middle;'>🛍️</span> <span style='font-size: 13px; color: #00FF66; font-weight: bold; vertical-align: middle;'>Táper S/. 1.00</span>", unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
                 
         # ---- PRODUCTO 2 ----
         if i + 1 < len(PRODUCTOS_INFO):
@@ -506,13 +521,14 @@ with tab_ventas:
                 es_caldo2 = p2.get("lleva_taper", False)
                 icono_p2 = p2.get("icono", "🥤")
                 
-                # Contenedor único para aplicar estilo de imagen de fondo al botón principal
-                st.markdown(f'<div class="product-column" id="prod-col-{i+1}">', unsafe_allow_html=True)
+                # 1. Ancla invisible para identificar la ubicación exacta del botón en el DOM
+                st.markdown(f'<div id="target-anchor-{i+1}"></div>', unsafe_allow_html=True)
                 
+                # 2. Inyectar CSS global dinámico para convertir el st.button adyacente en la imagen clickable
                 b64_img2 = get_image_base64(p2["imagen"])
                 st.markdown(f"""
                 <style>
-                #prod-col-{i+1} div[data-testid="stButton"]:first-of-type button {{
+                div:has(#target-anchor-{i+1}) + div div[data-testid="stButton"] button {{
                     background-image: url(data:image/png;base64,{b64_img2}) !important;
                     background-color: transparent !important;
                     background-repeat: no-repeat !important;
@@ -529,15 +545,15 @@ with tab_ventas:
                     display: block !important;
                     margin: 0 auto 5px auto !important;
                 }}
-                #prod-col-{i+1} div[data-testid="stButton"]:first-of-type button:hover {{
+                div:has(#target-anchor-{i+1}) + div div[data-testid="stButton"] button:hover {{
                     transform: scale(1.05) !important;
                     box-shadow: 0px 6px 15px rgba(255, 234, 0, 0.4) !important;
                     border-color: #FFEA00 !important;
                 }}
-                #prod-col-{i+1} div[data-testid="stButton"]:first-of-type button:active {{
+                div:has(#target-anchor-{i+1}) + div div[data-testid="stButton"] button:active {{
                     transform: scale(0.98) !important;
                 }}
-                #prod-col-{i+1} div[data-testid="stButton"]:first-of-type button * {{
+                div:has(#target-anchor-{i+1}) + div div[data-testid="stButton"] button * {{
                     display: none !important;
                 }}
                 </style>
@@ -576,13 +592,11 @@ with tab_ventas:
                         if st.button("➕", key=f"btn_t_indep_{i+1}"):
                             nombre_taper = f"{p2['nombre']} (en táper)"
                             if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
-                                st.toast(f"🛍️ +1 Táper registrado", icon="🛍️")
+                                rpt = st.toast(f"🛍️ +1 Táper registrado", icon="🛍️")
                                 st.session_state["reproducir_sonido"] = True
                                 st.rerun()
                     with col_txt_t2:
                         st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🛍️</span> <span style='font-size: 13px; color: #00FF66; font-weight: bold; vertical-align: middle;'>Táper S/. 1.00</span>", unsafe_allow_html=True)
-                
-                st.markdown('</div>', unsafe_allow_html=True)
 
     # Lanzador de sonido
     if st.session_state["reproducir_sonido"]:
@@ -600,7 +614,7 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenamos cronológicamente de fin a inicio (el más nuevo primero) usando datetime real
-            movimientos.sort(key=lambda x: obtener_datetime_sort(x), reverse=True)
+            movimientos.sort(key=lambda x: obtener_datetime_sort(x[0]), reverse=True)
         except Exception:
             # Si falla, simplemente revertimos el orden de registro original (Sheets los entrega de inicio a fin)
             movimientos.reverse()
