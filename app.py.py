@@ -120,33 +120,43 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    /* Forzar que la subdivisión (Caldo a la izquierda y modificadores a la derecha) NO colapse */
+    /* Forzar que la subdivisión (Caldo a la izquierda y modificadores a la derecha) NO colapse verticalmente */
     div[data-testid="stHorizontalBlock"]:has(div[id*="sub-anchor-"]) {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         gap: 4px !important;
     }
+    /* Quitamos el flex override para respetar el ratio [0.62, 0.38] nativo de Streamlit */
     div[data-testid="stHorizontalBlock"]:has(div[id*="sub-anchor-"]) > div[data-testid="column"] {
-        width: auto !important;
-        min-width: 0 !important;
-        flex: 1 1 0% !important;
         padding: 0 !important;
     }
 
-    /* Forzar que el botón de Huevo/Vaso y su precio se mantengan en fila horizontal */
+    /* Centrar perfectamente la foto del caldo, descripción y precio en una sola recta vertical */
+    div[data-testid="column"]:has(div[id*="target-anchor-"]) {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        justify-content: flex-start !important;
+    }
+
+    /* Forzar que el botón de Huevo/Vaso y su precio se mantengan en fila horizontal pegaditos */
     div[data-testid="stHorizontalBlock"]:has(div[id*="egg-anchor-"]),
     div[data-testid="stHorizontalBlock"]:has(div[id*="taper-anchor-"]) {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
-        gap: 2px !important;
+        gap: 0px !important; /* Cero espacio entre las dos columnas para que se junten */
         align-items: center !important;
+        justify-content: flex-start !important;
     }
+    /* Evitar que las micro-columnas del huevo/taper se estiren, pegando el precio al botón redondo */
     div[data-testid="stHorizontalBlock"]:has(div[id*="egg-anchor-"]) > div[data-testid="column"],
     div[data-testid="stHorizontalBlock"]:has(div[id*="taper-anchor-"]) > div[data-testid="column"] {
         width: auto !important;
         min-width: 0 !important;
-        flex: 1 1 0% !important;
+        flex: 0 0 auto !important;
         padding: 0 !important;
+        margin: 0 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -586,8 +596,8 @@ with tab_ventas:
                     background-repeat: no-repeat !important;
                     background-size: cover !important;
                     background-position: center !important;
-                    width: 105px !important;
-                    height: 105px !important;
+                    width: 85px !important;
+                    height: 85px !important;
                     border-radius: 15px !important;
                     border: 1px solid #37474F !important;
                     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5) !important;
@@ -645,7 +655,7 @@ with tab_ventas:
                                 justify-content: center !important;
                                 box-shadow: 0px 4px 8px rgba(0, 255, 102, 0.2) !important;
                                 padding: 0 !important;
-                                margin: 0 auto !important;
+                                margin: 0 !important;
                                 transition: transform 0.1s !important;
                             }}
                             div.element-container:has(#egg-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
@@ -664,7 +674,7 @@ with tab_ventas:
                                     st.session_state["reproducir_sonido"] = True
                                     st.rerun()
                         with col_egg_txt:
-                            st.markdown("<div style='font-size: 10px; font-weight: bold; color: #00FF66; margin-top: 4px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
+                            st.markdown("<div style='font-size: 10px; font-weight: bold; color: #00FF66; margin-top: 4px; margin-left: 3px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
                             
                         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                         
@@ -686,7 +696,7 @@ with tab_ventas:
                                 justify-content: center !important;
                                 box-shadow: 0px 4px 8px rgba(41, 121, 255, 0.2) !important;
                                 padding: 0 !important;
-                                margin: 0 auto !important;
+                                margin: 0 !important;
                                 transition: transform 0.1s !important;
                             }}
                             div.element-container:has(#taper-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
@@ -705,7 +715,7 @@ with tab_ventas:
                                     st.session_state["reproducir_sonido"] = True
                                     st.rerun()
                         with col_taper_txt:
-                            st.markdown("<div style='font-size: 10px; font-weight: bold; color: #2979FF; margin-top: 4px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
+                            st.markdown("<div style='font-size: 10px; font-weight: bold; color: #2979FF; margin-top: 4px; margin-left: 3px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
                     else:
                         # Espacio vacío para mantener proporciones en bebidas
                         st.write("")
@@ -741,8 +751,8 @@ with tab_ventas:
                         background-repeat: no-repeat !important;
                         background-size: cover !important;
                         background-position: center !important;
-                        width: 105px !important;
-                        height: 105px !important;
+                        width: 85px !important;
+                        height: 85px !important;
                         border-radius: 15px !important;
                         border: 1px solid #37474F !important;
                         box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5) !important;
@@ -800,7 +810,7 @@ with tab_ventas:
                                     justify-content: center !important;
                                     box-shadow: 0px 4px 8px rgba(0, 255, 102, 0.2) !important;
                                     padding: 0 !important;
-                                    margin: 0 auto !important;
+                                    margin: 0 !important;
                                     transition: transform 0.1s !important;
                                 }}
                                 div.element-container:has(#egg-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:hover {{
@@ -819,7 +829,7 @@ with tab_ventas:
                                         st.session_state["reproducir_sonido"] = True
                                         st.rerun()
                             with col_egg_txt2:
-                                st.markdown("<div style='font-size: 10px; font-weight: bold; color: #00FF66; margin-top: 4px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
+                                st.markdown("<div style='font-size: 10px; font-weight: bold; color: #00FF66; margin-top: 4px; margin-left: 3px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
                                 
                             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                             
@@ -841,7 +851,7 @@ with tab_ventas:
                                     justify-content: center !important;
                                     box-shadow: 0px 4px 8px rgba(41, 121, 255, 0.2) !important;
                                     padding: 0 !important;
-                                    margin: 0 auto !important;
+                                    margin: 0 !important;
                                     transition: transform 0.1s !important;
                                 }}
                                 div.element-container:has(#taper-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:hover {{
@@ -860,7 +870,7 @@ with tab_ventas:
                                         st.session_state["reproducir_sonido"] = True
                                         st.rerun()
                             with col_taper_txt2:
-                                st.markdown("<div style='font-size: 10px; font-weight: bold; color: #2979FF; margin-top: 4px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
+                                st.markdown("<div style='font-size: 10px; font-weight: bold; color: #2979FF; margin-top: 4px; margin-left: 3px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
                         else:
                             # Espacio vacío para mantener proporciones en bebidas
                             st.write("")
