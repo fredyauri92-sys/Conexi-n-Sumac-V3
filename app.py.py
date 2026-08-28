@@ -303,10 +303,10 @@ def obtener_datetime_sort(fecha_str):
         # Regex de emergencia para buscar bloques numéricos
         numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
-            if len(numbers[0]) == 4: # Año primero (YYYY-MM-DD)
-                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
+            if len(numbers) == 4: # Año primero (YYYY-MM-DD)
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
             else: # Día primero (DD-MM-YYYY)
-                return datetime(int(numbers[2]), int(numbers[1]), int(numbers[0]), int(numbers[3]), int(numbers[4]))
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
     except Exception:
         pass
     return datetime.min
@@ -466,7 +466,7 @@ with tab_ventas:
                 st.markdown(f'<div class="product-column" id="prod-col-{i+1}">', unsafe_allow_html=True)
                 
                 b64_img2 = get_image_base64(p2["imagen"])
-                st.markdown(f\"\"\"
+                st.markdown(f"""
                 <style>
                 #prod-col-{i+1} div[data-testid="stButton"]:first-of-type button {{
                     background-image: url(data:image/png;base64,{b64_img2}) !important;
@@ -495,7 +495,7 @@ with tab_ventas:
                     display: none !important;
                 }}
                 </style>
-                \"\"\", unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
                 
                 # El botón nativo de Streamlit, que se convierte visualmente en la imagen interactiva
                 if st.button("", key=f"btn_sell_caldo_{i+1}"):
@@ -554,7 +554,7 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenamos cronológicamente de fin a inicio (el más nuevo primero) usando datetime real
-            movimientos.sort(key=lambda x: obtener_datetime_sort(x[0]), reverse=True)
+            movimientos.sort(key=lambda x: obtener_datetime_sort(x), reverse=True)
         except Exception:
             # Si falla, simplemente revertimos el orden de registro original (Sheets los entrega de inicio a fin)
             movimientos.reverse()
