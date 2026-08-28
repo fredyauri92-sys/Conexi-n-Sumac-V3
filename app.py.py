@@ -369,7 +369,7 @@ with tab_ventas:
             cant1 = contar_vendidos_hoy(p1["nombre"])
             es_caldo1 = p1.get("lleva_taper", False)
             
-            # 2. Descripción del Caldo y su Valor
+            # 2. Descripción del Caldo y su Valor (Limpio de Horas molestas)
             st.markdown(f"**🍲 {p1['nombre']}**")
             st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p1['precio']:.2f}</p>", unsafe_allow_html=True)
             
@@ -381,11 +381,11 @@ with tab_ventas:
                     st.session_state["reproducir_sonido"] = True
                     st.rerun()
             
-            # 4. Botones de Modificadores (Tamaño Gigante al 200%)
+            # 4. Botones de Modificadores (Registro directo y asociado exactamente al caldo correspondiente)
             if es_caldo1:
                 st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
                 
-                # Botón independiente de Huevo Extra
+                # Botón independiente de Huevo Extra (Registra directamente al tocar la ➕)
                 col_btn_h, col_txt_h = st.columns([0.4, 0.6])
                 with col_btn_h:
                     if st.button("➕", key=f"btn_h_indep_{i}"):
@@ -395,9 +395,9 @@ with tab_ventas:
                             st.session_state["reproducir_sonido"] = True
                             st.rerun()
                 with col_txt_h:
-                    st.markdown("<span style='font-size: 24px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 2px;'>🥚 S/. 1.00</span>", unsafe_allow_html=True)
+                    st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🥚</span> <span style='font-size: 12px; color: #00FF66; font-weight: bold; vertical-align: middle;'>S/. 1.00</span>", unsafe_allow_html=True)
                 
-                # Botón independiente de Táper de Litro
+                # Botón independiente de Táper de Litro (Asociado al Caldo actual)
                 col_btn_t, col_txt_t = st.columns([0.4, 0.6])
                 with col_btn_t:
                     if st.button("➕", key=f"btn_t_indep_{i}"):
@@ -407,7 +407,7 @@ with tab_ventas:
                             st.session_state["reproducir_sonido"] = True
                             st.rerun()
                 with col_txt_t:
-                    st.markdown("<span style='font-size: 24px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 2px;'>🛍️ S/. 1.00</span>", unsafe_allow_html=True)
+                    st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🛍️</span> <span style='font-size: 12px; color: #00FF66; font-weight: bold; vertical-align: middle;'>S/. 1.00</span>", unsafe_allow_html=True)
                 
         # ---- PRODUCTO 2 ----
         if i + 1 < len(PRODUCTOS_INFO):
@@ -436,7 +436,7 @@ with tab_ventas:
                         st.session_state["reproducir_sonido"] = True
                         st.rerun()
                 
-                # Botones de Modificadores (Sintaxis corregida a st.rerun())
+                # Botones de Modificadores (Asociados al Caldo correspondiente)
                 if es_caldo2:
                     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
                     
@@ -450,7 +450,7 @@ with tab_ventas:
                                 st.session_state["reproducir_sonido"] = True
                                 st.rerun()
                     with col_txt_h2:
-                        st.markdown("<span style='font-size: 24px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 2px;'>🥚 S/. 1.00</span>", unsafe_allow_html=True)
+                        st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🥚</span> <span style='font-size: 12px; color: #00FF66; font-weight: bold; vertical-align: middle;'>S/. 1.00</span>", unsafe_allow_html=True)
                     
                     # Botón independiente de Táper de Litro
                     col_btn_t2, col_txt_t2 = st.columns([0.4, 0.6])
@@ -462,7 +462,7 @@ with tab_ventas:
                                 st.session_state["reproducir_sonido"] = True
                                 st.rerun()
                     with col_txt_t2:
-                        st.markdown("<span style='font-size: 24px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 2px;'>🛍️ S/. 1.00</span>", unsafe_allow_html=True)
+                        st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🛍️</span> <span style='font-size: 12px; color: #00FF66; font-weight: bold; vertical-align: middle;'>S/. 1.00</span>", unsafe_allow_html=True)
 
     # Lanzador de sonido
     if st.session_state["reproducir_sonido"]:
