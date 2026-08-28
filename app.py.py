@@ -4,7 +4,7 @@ import json
 import threading
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Configuración de página móvil premium
 st.set_page_config(
@@ -211,8 +211,8 @@ def enviar_a_sheets_bg(api_url, payload):
 
 def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
-    # Obtener la hora actual de Sicuani (Perú) que es UTC-5
-    fecha_hoy = (datetime.utcnow() - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S")
+    # Obtener la hora actual de Sicuani (Perú) que es UTC-5 de forma 100% segura
+    fecha_hoy = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S")
     
     # 1. Registrar LOCALMENTE en la memoria (caché) para actualizar la pantalla en MILISEGUNDOS
     if tipo == "VENTA":
@@ -258,10 +258,6 @@ PRODUCTOS_INFO = [
     {"nombre": "Agua mineral", "precio": 1.0, "icono": "💧", "imagen": "agua_san_luis.png", "lleva_taper": False}
 ]
 
-# Inicializar estado de sonido
-if "reproducir_sonido" not in st.session_state:
-    st.session_state["reproducir_sonido"] = False
-
 # Helper para contar ventas consolidadas hoy por producto o detalle
 def contar_vendidos_hoy(nombre_base):
     total = 0
@@ -275,19 +271,27 @@ def extraer_hora(fecha_str):
     if not fecha_str:
         return "--:--"
     try:
-        is_utc = False
-        if fecha_str.endswith("Z") or "+00" in fecha_str:
-            is_utc = True
-        
-        # Limpiar caracteres ISO
-        clean_str = re.sub(r"([+-]\d{2}:\d{2}|Z)$", "", fecha_str)
-        clean_str = clean_str.replace("T", " ")
+        # Limpiar caracteres ISO y offset de zona horaria (Z, +00:00, etc.)
+        clean_str = fecha_str.replace("T", " ").replace("Z", "")
+        clean_str = re.sub(r"([+-]\d{2}:?\d{2})$", "", clean_str)
         
         if len(clean_str) > 16:
             dt = datetime.strptime(clean_str[:19], "%Y-%m-%d %H:%M:%S")
         else:
             dt = datetime.strptime(clean_str[:16], "%Y-%m-%d %H:%M")
             
+        # Determinar si está en UTC
+        is_utc = False
+        if "Z" in fecha_str or "+00" in fecha_str or "GMT" in fecha_str:
+            is_utc = True
+        else:
+            # Si no tiene etiqueta pero la hora está en el futuro en comparación con Perú (UTC-5),
+            # entonces la fecha de Sheets viene en formato UTC naive.
+            # Sicuani (Perú) es UTC-5:
+            ahora_peru = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=5)
+            if dt > ahora_peru + timedelta(hours=1):
+                is_utc = True
+                
         if is_utc:
             dt = dt - timedelta(hours=5)
     except Exception:
