@@ -45,8 +45,8 @@ st.markdown("""
     }
     /* Estilos personalizados para los Toggles de Streamlit */
     .stToggle {
-        margin-top: 5px;
-        margin-bottom: 8px;
+        margin-top: 3px;
+        margin-bottom: 5px;
     }
     /* Estilo para el botón de formulario */
     div.stFormSubmitButton > button {
@@ -224,11 +224,14 @@ PRODUCTOS_INFO = [
     {"nombre": "Agua mineral", "precio": 1.0, "icono": "💧", "imagen": "agua_san_luis.png", "lleva_taper": False}
 ]
 
-# Inicializar modificadores de huevos extra si no existen
+# Inicializar estados de modificadores (Huevo y Táper) si no existen para cada producto
 for idx in range(len(PRODUCTOS_INFO)):
-    key_h = f"huevos_extra_{idx}"
+    key_h = f"huevo_toggle_{idx}"
+    key_t = f"taper_toggle_{idx}"
     if key_h not in st.session_state:
-        st.session_state[key_h] = 0
+        st.session_state[key_h] = False
+    if key_t not in st.session_state:
+        st.session_state[key_t] = False
 
 # Helper para contar ventas consolidadas hoy por producto
 def contar_vendidos_hoy(nombre_base):
@@ -263,47 +266,47 @@ tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anota
 with tab_ventas:
     st.markdown("<h4 style='color: #CFD8DC;'>Selecciona para vender:</h4>", unsafe_allow_html=True)
     
-    # Grid de imágenes de producto y botones de venta de 2 en 2 (Con imágenes compactadas al 50% de ancho de columna)
+    # Grid de imágenes de producto y botones de venta de 2 en 2
     for i in range(0, len(PRODUCTOS_INFO), 2):
         col1, col2 = st.columns(2)
         
         # ---- PRODUCTO 1 ----
         p1 = PRODUCTOS_INFO[i]
         with col1:
-            # Imagen compacta a 110px de ancho para equilibrio visual móvil
             if "imagen" in p1 and os.path.exists(p1["imagen"]):
                 st.image(p1["imagen"], width=110)
                 
             cant1 = contar_vendidos_hoy(p1["nombre"])
             es_caldo1 = p1.get("lleva_taper", False)
             
-            # Selector de Huevos Extra (exclusivo para caldos)
-            huevos_extra1 = st.session_state.get(f"huevos_extra_{i}", 0) if es_caldo1 else 0
-            
-            # Selector Moderno de Táper para llevar (Toggle táctil e intuitivo)
+            # Selectores rápidos tipo Toggle táctil
+            huevo_activo1 = False
             taper_activo1 = False
+            
             if es_caldo1:
+                # Helios: Toggles súper intuitivos de Sí/No. Eliminamos el contador +/- con signo menos.
+                huevo_activo1 = st.toggle("🥚 Huevo Extra (+S/. 1)", key=f"huevo_toggle_{i}")
                 taper_activo1 = st.toggle("🛍️ Llevar en Táper (+S/. 1)", key=f"taper_toggle_{i}")
                 
-            # Cálculo del precio final dinámico en tiempo real
-            precio_final1 = p1["precio"] + (huevos_extra1 * 1.0) + (1.0 if taper_activo1 else 0)
+            # Cálculo de precio dinámico
+            precio_final1 = p1["precio"] + (1.0 if huevo_activo1 else 0) + (1.0 if taper_activo1 else 0)
             
-            # Construcción del texto del botón de venta
+            # Etiquetas visibles en el botón
             etiquetas1 = []
-            if huevos_extra1 > 0:
-                etiquetas1.append(f"+{huevos_extra1}🥚")
+            if huevo_activo1:
+                etiquetas1.append("+🥚")
             if taper_activo1:
-                etiquetas1.append("🛍️Táper")
+                etiquetas1.append("🛍️")
                 
-            modificadores_str1 = " (" + " ".join(etiquetas1) + ")" if etiquetas1 else ""
-            label_p1 = f"🛒 {p1['nombre']}\nS/. {precio_final1:.2f}{modificadores_str1}\n[ Hoy: {cant1} ]"
+            mod_str1 = " (" + " ".join(etiquetas1) + ")" if etiquetas1 else ""
+            label_p1 = f"🛒 {p1['nombre']}\nS/. {precio_final1:.2f}{mod_str1}\n[ Hoy: {cant1} ]"
                 
             if st.button(label_p1, key=f"btn_{i}"):
-                # Construir el nombre del producto detallado para Sheets e Historial
+                # Construir descripción de producto
                 nombre_reg1 = p1["nombre"]
                 detalles1 = []
-                if huevos_extra1 > 0:
-                    detalles1.append(f"+{huevos_extra1} huevo{'s' if huevos_extra1 > 1 else ''}")
+                if huevo_activo1:
+                    detalles1.append("Con Huevo Extra")
                 if taper_activo1:
                     detalles1.append("Para Llevar en Táper")
                 
@@ -312,25 +315,11 @@ with tab_ventas:
                 
                 if registrar_movimiento_instantaneo("VENTA", nombre_reg1, precio_final1):
                     st.toast(f"🟢 Venta registrada: {nombre_reg1}", icon="🍲")
+                    # Helios: Reseteo instantáneo y automático tras presionar el botón de venta
                     if es_caldo1:
-                        st.session_state[f"huevos_extra_{i}"] = 0
+                        st.session_state[f"huevo_toggle_{i}"] = False
+                        st.session_state[f"taper_toggle_{i}"] = False
                     st.rerun()
-            
-            # Controles +/- de huevos extra justo abajo de la venta para caldos
-            if es_caldo1:
-                c_dec, c_val, c_inc = st.columns([1, 1.5, 1])
-                with c_dec:
-                    if st.button("➖", key=f"dec_{i}", help="Quitar huevo"):
-                        if st.session_state[f"huevos_extra_{i}"] > 0:
-                            st.session_state[f"huevos_extra_{i}"] -= 1
-                            st.rerun()
-                with c_val:
-                    st.markdown(f"<div style='text-align: center; font-size: 13px; font-weight: bold; padding-top: 8px; color: #FFEA00;'>🥚 +{huevos_extra1}</div>", unsafe_allow_html=True)
-                with c_inc:
-                    if st.button("➕", key=f"inc_{i}", help="Agregar huevo (+S/. 1.00)"):
-                        if st.session_state[f"huevos_extra_{i}"] < 4:
-                            st.session_state[f"huevos_extra_{i}"] += 1
-                            st.rerun()
                 
         # ---- PRODUCTO 2 ----
         if i + 1 < len(PRODUCTOS_INFO):
@@ -342,30 +331,29 @@ with tab_ventas:
                 cant2 = contar_vendidos_hoy(p2["nombre"])
                 es_caldo2 = p2.get("lleva_taper", False)
                 
-                # Selector de Huevos Extra
-                huevos_extra2 = st.session_state.get(f"huevos_extra_{i+1}", 0) if es_caldo2 else 0
-                
-                # Selector Moderno de Táper para llevar
+                huevo_activo2 = False
                 taper_activo2 = False
+                
                 if es_caldo2:
+                    huevo_activo2 = st.toggle("🥚 Huevo Extra (+S/. 1)", key=f"huevo_toggle_{i+1}")
                     taper_activo2 = st.toggle("🛍️ Llevar en Táper (+S/. 1)", key=f"taper_toggle_{i+1}")
                     
-                precio_final2 = p2["precio"] + (huevos_extra2 * 1.0) + (1.0 if taper_activo2 else 0)
+                precio_final2 = p2["precio"] + (1.0 if huevo_activo2 else 0) + (1.0 if taper_activo2 else 0)
                 
                 etiquetas2 = []
-                if huevos_extra2 > 0:
-                    etiquetas2.append(f"+{huevos_extra2}🥚")
+                if huevo_activo2:
+                    etiquetas2.append("+🥚")
                 if taper_activo2:
-                    etiquetas2.append("🛍️Táper")
+                    etiquetas2.append("🛍️")
                     
-                modificadores_str2 = " (" + " ".join(etiquetas2) + ")" if etiquetas2 else ""
-                label_p2 = f"🛒 {p2['nombre']}\nS/. {precio_final2:.2f}{modificadores_str2}\n[ Hoy: {cant2} ]"
+                mod_str2 = " (" + " ".join(etiquetas2) + ")" if etiquetas2 else ""
+                label_p2 = f"🛒 {p2['nombre']}\nS/. {precio_final2:.2f}{mod_str2}\n[ Hoy: {cant2} ]"
                     
                 if st.button(label_p2, key=f"btn_{i+1}"):
                     nombre_reg2 = p2["nombre"]
                     detalles2 = []
-                    if huevos_extra2 > 0:
-                        detalles2.append(f"+{huevos_extra2} huevo{'s' if huevos_extra2 > 1 else ''}")
+                    if huevo_activo2:
+                        detalles2.append("Con Huevo Extra")
                     if taper_activo2:
                         detalles2.append("Para Llevar en Táper")
                     
@@ -375,23 +363,9 @@ with tab_ventas:
                     if registrar_movimiento_instantaneo("VENTA", nombre_reg2, precio_final2):
                         st.toast(f"🟢 Venta registrada: {nombre_reg2}", icon="🥤")
                         if es_caldo2:
-                            st.session_state[f"huevos_extra_{i+1}"] = 0
+                            st.session_state[f"huevo_toggle_{i+1}"] = False
+                            st.session_state[f"taper_toggle_{i+1}"] = False
                         st.rerun()
-                        
-                if es_caldo2:
-                    c_dec2, c_val2, c_inc2 = st.columns([1, 1.5, 1])
-                    with c_dec2:
-                        if st.button("➖", key=f"dec_{i+1}", help="Quitar huevo"):
-                            if st.session_state[f"huevos_extra_{i+1}"] > 0:
-                                st.session_state[f"huevos_extra_{i+1}"] -= 1
-                                st.rerun()
-                    with c_val2:
-                        st.markdown(f"<div style='text-align: center; font-size: 13px; font-weight: bold; padding-top: 8px; color: #FFEA00;'>🥚 +{huevos_extra2}</div>", unsafe_allow_html=True)
-                    with c_inc2:
-                        if st.button("➕", key=f"inc_{i+1}", help="Agregar huevo (+S/. 1.00)"):
-                            if st.session_state[f"huevos_extra_{i+1}"] < 4:
-                                st.session_state[f"huevos_extra_{i+1}"] += 1
-                                st.rerun()
 
     st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno (Lista de registro):</h5>", unsafe_allow_html=True)
     
