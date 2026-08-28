@@ -395,7 +395,7 @@ with tab_ventas:
                             st.session_state["reproducir_sonido"] = True
                             st.rerun()
                 with col_txt_h:
-                    st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🥚</span> <span style='font-size: 12px; color: #00FF66; font-weight: bold; vertical-align: middle;'>S/. 1.00</span>", unsafe_allow_html=True)
+                    st.markdown("<span style='font-size: 13px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 6px;'>🥚 Huevo S/. 1.00</span>", unsafe_allow_html=True)
                 
                 # Botón independiente de Táper de Litro (Asociado al Caldo actual)
                 col_btn_t, col_txt_t = st.columns([0.4, 0.6])
@@ -407,7 +407,7 @@ with tab_ventas:
                             st.session_state["reproducir_sonido"] = True
                             st.rerun()
                 with col_txt_t:
-                    st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🛍️</span> <span style='font-size: 12px; color: #00FF66; font-weight: bold; vertical-align: middle;'>S/. 1.00</span>", unsafe_allow_html=True)
+                    st.markdown("<span style='font-size: 13px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 6px;'>🛍️ Táper S/. 1.00</span>", unsafe_allow_html=True)
                 
         # ---- PRODUCTO 2 ----
         if i + 1 < len(PRODUCTOS_INFO):
@@ -450,7 +450,7 @@ with tab_ventas:
                                 st.session_state["reproducir_sonido"] = True
                                 st.rerun()
                     with col_txt_h2:
-                        st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🥚</span> <span style='font-size: 12px; color: #00FF66; font-weight: bold; vertical-align: middle;'>S/. 1.00</span>", unsafe_allow_html=True)
+                        st.markdown("<span style='font-size: 13px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 6px;'>🥚 Huevo S/. 1.00</span>", unsafe_allow_html=True)
                     
                     # Botón independiente de Táper de Litro
                     col_btn_t2, col_txt_t2 = st.columns([0.4, 0.6])
@@ -462,7 +462,7 @@ with tab_ventas:
                                 st.session_state["reproducir_sonido"] = True
                                 st.rerun()
                     with col_txt_t2:
-                        st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🛍️</span> <span style='font-size: 12px; color: #00FF66; font-weight: bold; vertical-align: middle;'>S/. 1.00</span>", unsafe_allow_html=True)
+                        st.markdown("<span style='font-size: 13px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 6px;'>🛍️ Táper S/. 1.00</span>", unsafe_allow_html=True)
 
     # Lanzador de sonido
     if st.session_state["reproducir_sonido"]:
@@ -484,7 +484,6 @@ with tab_ventas:
         except Exception:
             # Si falla, simplemente revertimos el orden de registro original (Sheets los entrega de inicio a fin)
             movimientos.reverse()
-            
         for fecha, detalle, monto in movimientos:
             color_txt = "#00FF66" if "VENTA" in detalle else "#FF0055"
             hora = extraer_hora(fecha)
@@ -516,7 +515,7 @@ with tab_gastos:
         gastos_hoy = datos["compras"]
         try:
             # Ordenar los gastos de más reciente a más antiguo
-            gastos_hoy_sorted = sorted(gastos_hoy, key=lambda x: obtener_datetime_sort(x["fecha"]), reverse=True)
+            gastos_hoy_sorted = sorted(gastos_hoy, key=lambda x: x["fecha"], reverse=True)
         except:
             gastos_hoy_sorted = gastos_hoy
             
