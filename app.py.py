@@ -105,30 +105,22 @@ st.markdown("""
     }
 
     /* =========================================================================
-       SÚPER RE-DISEÑO COMPACTO DE COLUMNAS (EVITA EL COLAPSO VERTICAL EN MÓVIL)
+       SÚPER RE-DISEÑO COMPACTO Y SIMÉTRICO PARA CELULARES (100% COMPATIBLE)
        ========================================================================= */
-    /* Forzar que las columnas de productos se mantengan una al lado de la otra (2 productos por fila) */
-    div[data-testid="stHorizontalBlock"]:has(div[id*="target-anchor-"]) {
+    /* Forzar que todos los bloques horizontales se mantengan en fila (no colapsen) en celulares */
+    div[data-testid="stHorizontalBlock"] {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
-        gap: 6px !important;
+        gap: 8px !important;
+        align-items: center !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(div[id*="target-anchor-"]) > div[data-testid="column"] {
+    /* Impedir el colapso vertical de las columnas dentro de los bloques horizontales */
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+        flex: 1 1 0% !important;
         width: 100% !important;
         min-width: 0 !important;
-        flex: 1 1 0% !important;
         padding: 0 !important;
-    }
-
-    /* Forzar que la subdivisión (Caldo a la izquierda y modificadores a la derecha) NO colapse verticalmente */
-    div[data-testid="stHorizontalBlock"]:has(div[id*="sub-anchor-"]) {
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: 4px !important;
-    }
-    /* Quitamos el flex override para respetar el ratio [0.62, 0.38] nativo de Streamlit */
-    div[data-testid="stHorizontalBlock"]:has(div[id*="sub-anchor-"]) > div[data-testid="column"] {
-        padding: 0 !important;
+        margin: 0 !important;
     }
 
     /* Centrar perfectamente la foto del caldo, descripción y precio en una sola recta vertical */
@@ -140,23 +132,49 @@ st.markdown("""
         justify-content: flex-start !important;
     }
 
-    /* Forzar que el botón de Huevo/Vaso y su precio se mantengan en fila horizontal pegaditos */
-    div[data-testid="stHorizontalBlock"]:has(div[id*="egg-anchor-"]),
-    div[data-testid="stHorizontalBlock"]:has(div[id*="taper-anchor-"]) {
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: 0px !important; /* Cero espacio entre las dos columnas para que se junten */
-        align-items: center !important;
-        justify-content: flex-start !important;
+    /* Estilo premium para los botones unificados de modificadores (Huevo / Táper) */
+    div.element-container:has(div[id*="egg-anchor-"]) + div.element-container div[data-testid="stButton"] button {
+        background-color: #1E1E1E !important;
+        color: #00FF66 !important;
+        border: 2px solid #00FF66 !important;
+        border-radius: 20px !important;
+        font-size: 11px !important;
+        font-weight: bold !important;
+        height: 34px !important;
+        line-height: 1 !important;
+        padding: 0px 8px !important;
+        width: 100% !important;
+        box-shadow: 0px 4px 8px rgba(0, 255, 102, 0.15) !important;
+        transition: transform 0.1s !important;
     }
-    /* Evitar que las micro-columnas del huevo/taper se estiren, pegando el precio al botón redondo */
-    div[data-testid="stHorizontalBlock"]:has(div[id*="egg-anchor-"]) > div[data-testid="column"],
-    div[data-testid="stHorizontalBlock"]:has(div[id*="taper-anchor-"]) > div[data-testid="column"] {
-        width: auto !important;
-        min-width: 0 !important;
-        flex: 0 0 auto !important;
-        padding: 0 !important;
-        margin: 0 !important;
+    div.element-container:has(div[id*="egg-anchor-"]) + div.element-container div[data-testid="stButton"] button:hover {
+        transform: scale(1.05) !important;
+        box-shadow: 0px 6px 12px rgba(0, 255, 102, 0.3) !important;
+    }
+    div.element-container:has(div[id*="egg-anchor-"]) + div.element-container div[data-testid="stButton"] button:active {
+        transform: scale(0.95) !important;
+    }
+
+    div.element-container:has(div[id*="taper-anchor-"]) + div.element-container div[data-testid="stButton"] button {
+        background-color: #1E1E1E !important;
+        color: #2979FF !important;
+        border: 2px solid #2979FF !important;
+        border-radius: 20px !important;
+        font-size: 11px !important;
+        font-weight: bold !important;
+        height: 34px !important;
+        line-height: 1 !important;
+        padding: 0px 8px !important;
+        width: 100% !important;
+        box-shadow: 0px 4px 8px rgba(41, 121, 255, 0.15) !important;
+        transition: transform 0.1s !important;
+    }
+    div.element-container:has(div[id*="taper-anchor-"]) + div.element-container div[data-testid="stButton"] button:hover {
+        transform: scale(1.05) !important;
+        box-shadow: 0px 6px 12px rgba(41, 121, 255, 0.3) !important;
+    }
+    div.element-container:has(div[id*="taper-anchor-"]) + div.element-container div[data-testid="stButton"] button:active {
+        transform: scale(0.95) !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -563,317 +581,98 @@ tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anota
 with tab_ventas:
     st.markdown("<h4 style='color: #CFD8DC;'>Selecciona para vender:</h4>", unsafe_allow_html=True)
     
-    # Grid de imágenes de producto y botones de venta de 2 en 2
-    for i in range(0, len(PRODUCTOS_INFO), 2):
-        col1, col2 = st.columns(2)
+    # Cada producto ocupa una fila completa para evitar colapsos y amontonamientos en móvil
+    for i, p in enumerate(PRODUCTOS_INFO):
+        cant = contar_vendidos_hoy(p["nombre"])
+        es_caldo = p.get("lleva_taper", False)
+        icono = p.get("icono", "🍲")
         
-        # ---- PRODUCTO 1 ----
-        p1 = PRODUCTOS_INFO[i]
-        with col1:
-            cant1 = contar_vendidos_hoy(p1["nombre"])
-            es_caldo1 = p1.get("lleva_taper", False)
+        # Siempre dividimos horizontalmente usando la proporción exacta [0.65, 0.35]
+        st.markdown(f'<div id="sub-anchor-{i}"></div>', unsafe_allow_html=True)
+        sub_left, sub_right = st.columns([0.65, 0.35])
             
-            # Siempre dividimos horizontalmente usando la proporción exacta [0.62, 0.38]
-            # de esta forma todas las fotos (de caldos y bebidas) quedan exactamente en la misma vertical
-            st.markdown(f'<div id="sub-anchor-{i}"></div>', unsafe_allow_html=True)
-            sub_left, sub_right = st.columns([0.62, 0.38])
+        with sub_left:
+            b64_img = st.session_state.get("imagenes_base64", {}).get(p["imagen"], "")
+            if not b64_img:
+                b64_img = get_image_base64(p["imagen"])
                 
-            with sub_left:
-                b64_img1 = st.session_state.get("imagenes_base64", {}).get(p1["imagen"], "")
-                if not b64_img1:
-                    b64_img1 = get_image_base64(p1["imagen"])
-                    
-                st.markdown(f"""
-                <div id="target-anchor-{i}"></div>
-                <style>
-                div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] {{
-                    display: flex !important;
-                    justify-content: center !important;
-                }}
-                div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button {{
-                    background-image: url(data:image/png;base64,{b64_img1}) !important;
-                    background-color: transparent !important;
-                    background-repeat: no-repeat !important;
-                    background-size: cover !important;
-                    background-position: center !important;
-                    width: 85px !important;
-                    height: 85px !important;
-                    border-radius: 15px !important;
-                    border: 1px solid #37474F !important;
-                    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5) !important;
-                    color: transparent !important;
-                    overflow: hidden !important;
-                    transition: transform 0.2s, box-shadow 0.2s !important;
-                    display: block !important;
-                    margin: 0 auto 3px auto !important;
-                }}
-                div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
-                    transform: scale(1.05) !important;
-                    box-shadow: 0px 6px 15px rgba(255, 234, 0, 0.4) !important;
-                    border-color: #FFEA00 !important;
-                }}
-                div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:active {{
-                    transform: scale(0.98) !important;
-                }}
-                div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button * {{
-                    display: none !important;
-                }}
-                </style>
-                """, unsafe_allow_html=True)
+            st.markdown(f"""
+            <div id="target-anchor-{i}"></div>
+            <style>
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] {{
+                display: flex !important;
+                justify-content: center !important;
+            }}
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button {{
+                background-image: url(data:image/png;base64,{b64_img}) !important;
+                background-color: transparent !important;
+                background-repeat: no-repeat !important;
+                background-size: cover !important;
+                background-position: center !important;
+                width: 95px !important;
+                height: 95px !important;
+                border-radius: 15px !important;
+                border: 1px solid #37474F !important;
+                box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5) !important;
+                color: transparent !important;
+                overflow: hidden !important;
+                transition: transform 0.2s, box-shadow 0.2s !important;
+                display: block !important;
+                margin: 0 auto 3px auto !important;
+            }}
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
+                transform: scale(1.05) !important;
+                box-shadow: 0px 6px 15px rgba(255, 234, 0, 0.4) !important;
+                border-color: #FFEA00 !important;
+            }}
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:active {{
+                transform: scale(0.98) !important;
+            }}
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button * {{
+                display: none !important;
+            }}
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Botón nativo clickable de Caldo o Bebida
+            if st.button("", key=f"btn_sell_caldo_{i}"):
+                if registrar_movimiento_instantaneo("VENTA", p["nombre"], p["precio"]):
+                    st.toast(f"🟢 Venta registrada: {p['nombre']}", icon=icono)
+                    st.session_state["reproducir_sonido"] = True
+                    st.rerun()
+            
+            # Descripción centrada súper compacta en la misma recta del botón
+            st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 12px; line-height: 1.1; margin-top: -2px;'>{icono} {p['nombre']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-bottom: 2px;'>S/. {p['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 3px;'>• Hoy: {cant}</span></p>", unsafe_allow_html=True)
+            
+        with sub_right:
+            if es_caldo:
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 
-                # Botón nativo clickable de Caldo o Bebida
-                if st.button("", key=f"btn_sell_caldo_{i}"):
-                    if registrar_movimiento_instantaneo("VENTA", p1["nombre"], p1["precio"]):
-                        st.toast(f"🟢 Venta registrada: {p1['nombre']}", icon=p1.get("icono", "🍲"))
+                # --- MODIFICADOR HUEVO EXTRA (🥚 S/.1.0) ---
+                st.markdown(f'<div id="egg-anchor-{i}"></div>', unsafe_allow_html=True)
+                if st.button("🥚 S/.1.0", key=f"btn_h_indep_{i}"):
+                    nombre_huevo = f"{p['nombre']} (+1 huevo)"
+                    if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
+                        st.toast(f"🥚 +1 Huevo registrado", icon="🥚")
                         st.session_state["reproducir_sonido"] = True
                         st.rerun()
-                
-                # Descripción centrada súper compacta en la misma recta del botón
-                st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 12px; line-height: 1.1; margin-top: -2px;'>{p1.get('icono', '🍲')} {p1['nombre']}</div>", unsafe_allow_html=True)
-                st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-bottom: 2px;'>S/. {p1['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 3px;'>• Hoy: {cant1}</span></p>", unsafe_allow_html=True)
-                
-            if sub_right is not None:
-                with sub_right:
-                    if es_caldo1:
-                        st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
                         
-                        # --- MODIFICADOR HUEVO EXTRA (🥚) ---
-                        col_egg_btn, col_egg_txt = st.columns([0.45, 0.55])
-                        with col_egg_btn:
-                            st.markdown(f"""
-                            <div id="egg-anchor-{i}"></div>
-                            <style>
-                            div.element-container:has(#egg-anchor-{i}) + div.element-container div[data-testid="stButton"] button {{
-                                background-color: #1E1E1E !important;
-                                border: 2px solid #00FF66 !important;
-                                border-radius: 50% !important;
-                                width: 38px !important;
-                                height: 38px !important;
-                                font-size: 19px !important;
-                                display: flex !important;
-                                align-items: center !important;
-                                justify-content: center !important;
-                                box-shadow: 0px 4px 8px rgba(0, 255, 102, 0.2) !important;
-                                padding: 0 !important;
-                                margin: 0 !important;
-                                transition: transform 0.1s !important;
-                            }}
-                            div.element-container:has(#egg-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
-                                transform: scale(1.1) !important;
-                                box-shadow: 0px 6px 12px rgba(0, 255, 102, 0.4) !important;
-                            }}
-                            div.element-container:has(#egg-anchor-{i}) + div.element-container div[data-testid="stButton"] button:active {{
-                                transform: scale(0.95) !important;
-                            }}
-                            </style>
-                            """, unsafe_allow_html=True)
-                            if st.button("🥚", key=f"btn_h_indep_{i}"):
-                                nombre_huevo = f"{p1['nombre']} (+1 huevo)"
-                                if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
-                                    st.toast(f"🥚 +1 Huevo registrado", icon="🥚")
-                                    st.session_state["reproducir_sonido"] = True
-                                    st.rerun()
-                        with col_egg_txt:
-                            st.markdown("<div style='font-size: 10px; font-weight: bold; color: #00FF66; margin-top: 4px; margin-left: 3px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
-                            
-                        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-                        
-                        # --- MODIFICADOR TÁPER (Representado con Vaso de Vidrio Transparente 🥃) ---
-                        col_taper_btn, col_taper_txt = st.columns([0.45, 0.55])
-                        with col_taper_btn:
-                            st.markdown(f"""
-                            <div id="taper-anchor-{i}"></div>
-                            <style>
-                            div.element-container:has(#taper-anchor-{i}) + div.element-container div[data-testid="stButton"] button {{
-                                background-color: #1E1E1E !important;
-                                border: 2px solid #2979FF !important;
-                                border-radius: 50% !important;
-                                width: 38px !important;
-                                height: 38px !important;
-                                font-size: 19px !important;
-                                display: flex !important;
-                                align-items: center !important;
-                                justify-content: center !important;
-                                box-shadow: 0px 4px 8px rgba(41, 121, 255, 0.2) !important;
-                                padding: 0 !important;
-                                margin: 0 !important;
-                                transition: transform 0.1s !important;
-                            }}
-                            div.element-container:has(#taper-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
-                                transform: scale(1.1) !important;
-                                box-shadow: 0px 6px 12px rgba(41, 121, 255, 0.4) !important;
-                            }}
-                            div.element-container:has(#taper-anchor-{i}) + div.element-container div[data-testid="stButton"] button:active {{
-                                transform: scale(0.95) !important;
-                            }}
-                            </style>
-                            """, unsafe_allow_html=True)
-                            if st.button("🥃", key=f"btn_t_indep_{i}"):
-                                nombre_taper = f"{p1['nombre']} (en táper)"
-                                if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
-                                    st.toast(f"🥃 +1 Táper registrado", icon="🥃")
-                                    st.session_state["reproducir_sonido"] = True
-                                    st.rerun()
-                        with col_taper_txt:
-                            st.markdown("<div style='font-size: 10px; font-weight: bold; color: #2979FF; margin-top: 4px; margin-left: 3px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
-                    else:
-                        # Espacio vacío para mantener proporciones en bebidas
-                        st.write("")
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 
-        # ---- PRODUCTO 2 ----
-        if i + 1 < len(PRODUCTOS_INFO):
-            p2 = PRODUCTOS_INFO[i+1]
-            with col2:
-                cant2 = contar_vendidos_hoy(p2["nombre"])
-                es_caldo2 = p2.get("lleva_taper", False)
-                icono_p2 = p2.get("icono", "🥤")
+                # --- MODIFICADOR TÁPER (🥃 S/.1.0) ---
+                st.markdown(f'<div id="taper-anchor-{i}"></div>', unsafe_allow_html=True)
+                if st.button("🥃 S/.1.0", key=f"btn_t_indep_{i}"):
+                    nombre_taper = f"{p['nombre']} (en táper)"
+                    if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
+                        st.toast(f"🥃 +1 Táper registrado", icon="🥃")
+                        st.session_state["reproducir_sonido"] = True
+                        st.rerun()
+            else:
+                st.write("")
                 
-                # Siempre dividimos horizontalmente usando la proporción exacta [0.62, 0.38]
-                # de esta forma todas las fotos (de caldos y bebidas) quedan exactamente en la misma vertical
-                st.markdown(f'<div id="sub-anchor-{i+1}"></div>', unsafe_allow_html=True)
-                sub_left2, sub_right2 = st.columns([0.62, 0.38])
-                    
-                with sub_left2:
-                    b64_img2 = st.session_state.get("imagenes_base64", {}).get(p2["imagen"], "")
-                    if not b64_img2:
-                        b64_img2 = get_image_base64(p2["imagen"])
-                        
-                    st.markdown(f"""
-                    <div id="target-anchor-{i+1}"></div>
-                    <style>
-                    div.element-container:has(#target-anchor-{i+1}) + div.element-container div[data-testid="stButton"] {{
-                        display: flex !important;
-                        justify-content: center !important;
-                    }}
-                    div.element-container:has(#target-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button {{
-                        background-image: url(data:image/png;base64,{b64_img2}) !important;
-                        background-color: transparent !important;
-                        background-repeat: no-repeat !important;
-                        background-size: cover !important;
-                        background-position: center !important;
-                        width: 85px !important;
-                        height: 85px !important;
-                        border-radius: 15px !important;
-                        border: 1px solid #37474F !important;
-                        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5) !important;
-                        color: transparent !important;
-                        overflow: hidden !important;
-                        transition: transform 0.2s, box-shadow 0.2s !important;
-                        display: block !important;
-                        margin: 0 auto 3px auto !important;
-                    }}
-                    div.element-container:has(#target-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:hover {{
-                        transform: scale(1.05) !important;
-                        box-shadow: 0px 6px 15px rgba(255, 234, 0, 0.4) !important;
-                        border-color: #FFEA00 !important;
-                    }}
-                    div.element-container:has(#target-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:active {{
-                        transform: scale(0.98) !important;
-                    }}
-                    div.element-container:has(#target-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button * {{
-                        display: none !important;
-                    }}
-                    </style>
-                    """, unsafe_allow_html=True)
-                    
-                    # Botón nativo clickable de Caldo o Bebida
-                    if st.button("", key=f"btn_sell_caldo_{i+1}"):
-                        if registrar_movimiento_instantaneo("VENTA", p2["nombre"], p2["precio"]):
-                            st.toast(f"🟢 Venta registrada: {p2['nombre']}", icon=icono_p2)
-                            st.session_state["reproducir_sonido"] = True
-                            st.rerun()
-                    
-                    # Descripción centrada súper compacta en la misma recta del botón
-                    st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 12px; line-height: 1.1; margin-top: -2px;'>{icono_p2} {p2['nombre']}</div>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-bottom: 2px;'>S/. {p2['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 5px;'>• Hoy: {cant2}</span></p>", unsafe_allow_html=True)
-                    
-                if sub_right2 is not None:
-                    with sub_right2:
-                        if es_caldo2:
-                            st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
-                            
-                            # --- MODIFICADOR HUEVO EXTRA (🥚) ---
-                            col_egg_btn2, col_egg_txt2 = st.columns([0.45, 0.55])
-                            with col_egg_btn2:
-                                st.markdown(f"""
-                                <div id="egg-anchor-{i+1}"></div>
-                                <style>
-                                div.element-container:has(#egg-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button {{
-                                    background-color: #1E1E1E !important;
-                                    border: 2px solid #00FF66 !important;
-                                    border-radius: 50% !important;
-                                    width: 38px !important;
-                                    height: 38px !important;
-                                    font-size: 19px !important;
-                                    display: flex !important;
-                                    align-items: center !important;
-                                    justify-content: center !important;
-                                    box-shadow: 0px 4px 8px rgba(0, 255, 102, 0.2) !important;
-                                    padding: 0 !important;
-                                    margin: 0 !important;
-                                    transition: transform 0.1s !important;
-                                }}
-                                div.element-container:has(#egg-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:hover {{
-                                    transform: scale(1.1) !important;
-                                    box-shadow: 0px 6px 12px rgba(0, 255, 102, 0.4) !important;
-                                }}
-                                div.element-container:has(#egg-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:active {{
-                                    transform: scale(0.95) !important;
-                                }}
-                                </style>
-                                """, unsafe_allow_html=True)
-                                if st.button("🥚", key=f"btn_h_indep_{i+1}"):
-                                    nombre_huevo = f"{p2['nombre']} (+1 huevo)"
-                                    if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
-                                        st.toast(f"🥚 +1 Huevo registrado", icon="🥚")
-                                        st.session_state["reproducir_sonido"] = True
-                                        st.rerun()
-                            with col_egg_txt2:
-                                st.markdown("<div style='font-size: 10px; font-weight: bold; color: #00FF66; margin-top: 4px; margin-left: 3px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
-                                
-                            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-                            
-                            # --- MODIFICADOR TÁPER (Representado con Vaso de Vidrio Transparente 🥃) ---
-                            col_taper_btn2, col_taper_txt2 = st.columns([0.45, 0.55])
-                            with col_taper_btn2:
-                                st.markdown(f"""
-                                <div id="taper-anchor-{i+1}"></div>
-                                <style>
-                                div.element-container:has(#taper-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button {{
-                                    background-color: #1E1E1E !important;
-                                    border: 2px solid #2979FF !important;
-                                    border-radius: 50% !important;
-                                    width: 38px !important;
-                                    height: 38px !important;
-                                    font-size: 19px !important;
-                                    display: flex !important;
-                                    align-items: center !important;
-                                    justify-content: center !important;
-                                    box-shadow: 0px 4px 8px rgba(41, 121, 255, 0.2) !important;
-                                    padding: 0 !important;
-                                    margin: 0 !important;
-                                    transition: transform 0.1s !important;
-                                }}
-                                div.element-container:has(#taper-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:hover {{
-                                    transform: scale(1.1) !important;
-                                    box-shadow: 0px 6px 12px rgba(41, 121, 255, 0.4) !important;
-                                }}
-                                div.element-container:has(#taper-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:active {{
-                                    transform: scale(0.95) !important;
-                                }}
-                                </style>
-                                """, unsafe_allow_html=True)
-                                if st.button("🥃", key=f"btn_t_indep_{i+1}"):
-                                    nombre_taper = f"{p2['nombre']} (en táper)"
-                                    if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
-                                        st.toast(f"🥃 +1 Táper registrado", icon="🥃")
-                                        st.session_state["reproducir_sonido"] = True
-                                        st.rerun()
-                            with col_taper_txt2:
-                                st.markdown("<div style='font-size: 10px; font-weight: bold; color: #2979FF; margin-top: 4px; margin-left: 3px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
-                        else:
-                            # Espacio vacío para mantener proporciones en bebidas
-                            st.write("")
+        # Una pequeña línea separadora sutil para diferenciar filas
+        st.markdown("<div style='border-bottom: 1px solid #222222; margin: 10px 0;'></div>", unsafe_allow_html=True)
 
     # Lanzador de sonido
     if st.session_state["reproducir_sonido"]:
