@@ -278,7 +278,7 @@ def obtener_datetime_sort(fecha_str):
     try:
         # Limpiar caracteres ISO y offset de zona horaria (Z, +00:00, etc.)
         clean_str = fecha_str.replace("T", " ").replace("Z", "").strip()
-        clean_str = re.sub(r"([+-]\d{2}:?\d{2})$", "", clean_str)
+        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})$", "", clean_str)
         
         # Intentar múltiples formatos comunes de fecha
         formatos = [
@@ -318,7 +318,7 @@ def extraer_hora(fecha_str):
     try:
         # Limpiar caracteres ISO y offset de zona horaria (Z, +00:00, etc.)
         clean_str = fecha_str.replace("T", " ").replace("Z", "")
-        clean_str = re.sub(r"([+-]\d{2}:?\d{2})$", "", clean_str)
+        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})$", "", clean_str)
         
         if len(clean_str) > 16:
             dt = datetime.strptime(clean_str[:19], "%Y-%m-%d %H:%M:%S")
@@ -354,13 +354,30 @@ def extraer_hora(fecha_str):
     
     return dt.strftime("%I:%M %p")
 
-# --- FUNCIÓN PARA OBTENER BASE64 DE IMAGEN ---
+# --- FUNCIÓN SUPER ROBUSTA PARA OBTENER BASE64 DE IMAGEN EN CUALQUIER ENTORNO ---
 def get_image_base64(img_path):
     import base64
-    if img_path and os.path.exists(img_path):
-        with open(img_path, "rb") as f:
-            return base64.b64encode(f.read()).decode("utf-8")
-    return "" 
+    if not img_path:
+        return ""
+    
+    # Lista de posibles rutas para buscar la imagen de forma robusta
+    posibles_rutas = [
+        img_path,
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), img_path),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", img_path),
+        os.path.join("/workspace/artifacts", img_path),
+        os.path.join("/workspace/scratch", img_path),
+        os.path.join("/mount/src/conexi-n-sumac-v3", img_path)
+    ]
+    
+    for ruta in posibles_rutas:
+        if os.path.exists(ruta):
+            try:
+                with open(ruta, "rb") as f:
+                    return base64.b64encode(f.read()).decode("utf-8")
+            except Exception:
+                pass
+    return ""
 
 # Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
@@ -386,6 +403,8 @@ with tab_ventas:
             <style>
             #prod-col-{i} div[data-testid="stButton"]:first-of-type button {{
                 background-image: url(data:image/png;base64,{b64_img1}) !important;
+                background-color: transparent !important;
+                background-repeat: no-repeat !important;
                 background-size: cover !important;
                 background-position: center !important;
                 width: 110px !important;
@@ -470,6 +489,8 @@ with tab_ventas:
                 <style>
                 #prod-col-{i+1} div[data-testid="stButton"]:first-of-type button {{
                     background-image: url(data:image/png;base64,{b64_img2}) !important;
+                    background-color: transparent !important;
+                    background-repeat: no-repeat !important;
                     background-size: cover !important;
                     background-position: center !important;
                     width: 110px !important;
