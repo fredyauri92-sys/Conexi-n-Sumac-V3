@@ -266,6 +266,46 @@ def contar_vendidos_hoy(nombre_base):
             total += 1
     return total
 
+# Función súper robusta para convertir cualquier formato de fecha a objeto datetime real
+def obtener_datetime_sort(fecha_str):
+    if not fecha_str:
+        return datetime.min
+    try:
+        # Limpiar caracteres ISO y offset de zona horaria (Z, +00:00, etc.)
+        clean_str = fecha_str.replace("T", " ").replace("Z", "").strip()
+        clean_str = re.sub(r"([+-]\d{2}:?\d{2})$", "", clean_str)
+        
+        # Intentar múltiples formatos comunes de fecha
+        formatos = [
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%d/%m/%Y %H:%M:%S",
+            "%d/%m/%Y %H:%M",
+            "%Y/%m/%d %H:%M:%S",
+            "%Y/%m/%d %H:%M"
+        ]
+        for fmt in formatos:
+            try:
+                return datetime.strptime(clean_str, fmt)
+            except ValueError:
+                pass
+            try:
+                # Recortar cadena de texto al tamaño esperado por el formato
+                return datetime.strptime(clean_str[:len(datetime.now().strftime(fmt))], fmt)
+            except ValueError:
+                pass
+                
+        # Regex de emergencia para buscar bloques numéricos
+        numbers = re.findall(r"\d+", clean_str)
+        if len(numbers) >= 5:
+            if len(numbers[0]) == 4: # Año primero (YYYY-MM-DD)
+                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
+            else: # Día primero (DD-MM-YYYY)
+                return datetime(int(numbers[2]), int(numbers[1]), int(numbers[0]), int(numbers[3]), int(numbers[4]))
+    except Exception:
+        pass
+    return datetime.min
+
 # Función súper robusta para extraer la hora (HH:MM AM/PM) de cualquier formato de fecha
 def extraer_hora(fecha_str):
     if not fecha_str:
@@ -439,9 +479,12 @@ with tab_ventas:
         
     if movimientos:
         try:
-            movimientos.sort(key=lambda x: x, reverse=True)
-        except:
-            pass
+            # Ordenamos cronológicamente de fin a inicio (el más nuevo primero) usando datetime real
+            movimientos.sort(key=lambda x: obtener_datetime_sort(x[0]), reverse=True)
+        except Exception:
+            # Si falla, simplemente revertimos el orden de registro original (Sheets los entrega de inicio a fin)
+            movimientos.reverse()
+            
         for fecha, detalle, monto in movimientos:
             color_txt = "#00FF66" if "VENTA" in detalle else "#FF0055"
             hora = extraer_hora(fecha)
@@ -473,7 +516,7 @@ with tab_gastos:
         gastos_hoy = datos["compras"]
         try:
             # Ordenar los gastos de más reciente a más antiguo
-            gastos_hoy_sorted = sorted(gastos_hoy, key=lambda x: x["fecha"], reverse=True)
+            gastos_hoy_sorted = sorted(gastos_hoy, key=lambda x: obtener_datetime_sort(x["fecha"]), reverse=True)
         except:
             gastos_hoy_sorted = gastos_hoy
             
