@@ -303,10 +303,10 @@ def obtener_datetime_sort(fecha_str):
         # Regex de emergencia para buscar bloques numéricos
         numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
-            if len(numbers[0]) == 4: # Año primero (YYYY-MM-DD)
-                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
+            if len(numbers) == 4: # Año primero (YYYY-MM-DD)
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
             else: # Día primero (DD-MM-YYYY)
-                return datetime(int(numbers[2]), int(numbers[1]), int(numbers[0]), int(numbers[3]), int(numbers[4]))
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
     except Exception:
         pass
     return datetime.min
@@ -355,6 +355,7 @@ def extraer_hora(fecha_str):
     return dt.strftime("%I:%M %p")
 
 # --- FUNCIÓN SUPER ROBUSTA Y OPTIMIZADA PARA OBTENER BASE64 DE IMAGEN EN CUALQUIER ENTORNO ---
+@st.cache_data
 def get_image_base64(img_path):
     import base64
     import os
@@ -479,9 +480,9 @@ with tab_ventas:
                     st.session_state["reproducir_sonido"] = True
                     st.rerun()
             
-            # Descripción del Caldo y su Valor + Hoy Vendido
-            st.markdown(f"**🍲 {p1['nombre']}**")
-            st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p1['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 8px;'>• Hoy: {cant1}</span></p>", unsafe_allow_html=True)
+            # Descripción del Caldo y su Valor + Hoy Vendido (Centrado de forma premium)
+            st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 14px;'>🍲 {p1['nombre']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p1['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 8px;'>• Hoy: {cant1}</span></p>", unsafe_allow_html=True)
             
             # Botones de Modificadores (Asociado exactamente al caldo correspondiente)
             if es_caldo1:
@@ -562,9 +563,9 @@ with tab_ventas:
                         st.session_state["reproducir_sonido"] = True
                         st.rerun()
                 
-                # Descripción del Producto, su Valor y Hoy Vendido
-                st.markdown(f"**{icono_p2} {p2['nombre']}**")
-                st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p2['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 8px;'>• Hoy: {cant2}</span></p>", unsafe_allow_html=True)
+                # Descripción del Producto, su Valor y Hoy Vendido (Centrado de forma premium)
+                st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 14px;'>{icono_p2} {p2['nombre']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p2['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 8px;'>• Hoy: {cant2}</span></p>", unsafe_allow_html=True)
                 
                 # Botones de Modificadores (Asociados al Caldo correspondiente)
                 if es_caldo2:
@@ -610,7 +611,7 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenamos cronológicamente de fin a inicio (el más nuevo primero) usando datetime real
-            movimientos.sort(key=lambda x: obtener_datetime_sort(x), reverse=True)
+            movimientos.sort(key=lambda x: obtener_datetime_sort(x[0]), reverse=True)
         except Exception:
             # Si falla, simplemente revertimos el orden de registro original (Sheets los entrega de inicio a fin)
             movimientos.reverse()
@@ -620,3 +621,99 @@ with tab_ventas:
             st.markdown(f"<!-- {fecha} --><div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{detalle}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(monto):.2f} ({hora})</span></div>", unsafe_allow_html=True)
     else:
         st.info("No hay movimientos registrados hoy.")
+
+with tab_gastos:
+    st.markdown("<h4 style='color: #CFD8DC;'>Anotar un Gasto de Caja:</h4>", unsafe_allow_html=True)
+    
+    # Formulario inteligente con autolimpieza nativa segura y campo vaciado por defecto (value=None)
+    with st.form("formulario_gastos_sumac", clear_on_submit=True):
+        desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)")
+        monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0, value=None)
+        
+        btn_registrar = st.form_submit_button("💾 Registrar Gasto en Caja")
+        
+        if btn_registrar:
+            if desc_gasto and monto_gasto is not None and monto_gasto > 0:
+                if registrar_movimiento_instantaneo("GASTO", desc_gasto, monto_gasto):
+                    st.toast(f"🔴 Gasto registrado: {desc_gasto} (S/. {monto_gasto:.2f})", icon="💸")
+                    st.session_state["reproducir_sonido"] = True
+                    st.rerun()
+            else:
+                st.error("Por favor ingresa una descripción y un monto válido.")
+
+    st.markdown("<br><h5 style='color: #CFD8DC;'>📋 Gastos de hoy registrados:</h5>", unsafe_allow_html=True)
+    if datos["compras"]:
+        gastos_hoy = datos["compras"]
+        try:
+            # Ordenar los gastos de más reciente a más antiguo
+            gastos_hoy_sorted = sorted(gastos_hoy, key=lambda x: x["fecha"], reverse=True)
+        except:
+            gastos_hoy_sorted = gastos_hoy
+            
+        for g in gastos_hoy_sorted:
+            fecha = g.get("fecha", "")
+            hora = extraer_hora(fecha)
+            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #FF0055;'><span style='color: #FFEA00; font-weight: bold;'>• {g['detalle']}</span><span style='color: #FF0055; font-weight: bold;'>S/. {g['monto']:.2f} ({hora})</span></div>", unsafe_allow_html=True)
+    else:
+        st.info("No hay gastos registrados hoy.")
+
+with tab_caja:
+    st.markdown("<h4 style='text-align: center; color: #CFD8DC;'>💼 Finanzas del Turno</h4>", unsafe_allow_html=True)
+    
+    # Sincronización Manual segura
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
+        st.markdown("<span style='font-size: 13px; color: #CFD8DC;'>Sincronizar las ventas de todos los mozos:</span>", unsafe_allow_html=True)
+    with col_v2:
+        if st.button("🔄 Actualizar", key="btn_sync_caja"):
+            with st.spinner("Conectando..."):
+                st.session_state["datos_cache"] = cargar_datos_cloud()
+                st.rerun()
+
+    total_v = sum(v["total"] for v in datos["ventas"])
+    total_g = sum(c["monto"] for c in datos["compras"])
+    egresos = total_g
+    ganancia = total_v - egresos
+    
+    col_v, col_g = st.columns(2)
+    with col_v:
+        st.markdown(f"<div class='metric-box'>Ingresos<br><span class='metric-val-green'>S/. {total_v:.2f}</span></div>", unsafe_allow_html=True)
+    with col_g:
+        st.markdown(f"<div class='metric-box'>Gastos<br><span class='metric-val-red'>S/. {egresos:.2f}</span></div>", unsafe_allow_html=True)
+        
+    st.markdown(f"<div class='metric-box' style='background: #252525;'>GANANCIA NETA<br><span class='metric-val-blue' style='color: {'#00FF66' if ganancia >= 0 else '#FF0055'}'>S/. {ganancia:.2f}</span></div>", unsafe_allow_html=True)
+
+    if total_v > 0:
+        st.markdown("<br><h5 style='text-align: center; color: #CFD8DC;'>📊 Distribución Financiera:</h5>", unsafe_allow_html=True)
+        porcentaje_gasto = (egresos / total_v)
+        porcentaje_rentabilidad = max(0.0, 1.0 - porcentaje_gasto)
+        
+        st.write(f"🟢 Ganancia Neta ({porcentaje_rentabilidad*100:.0f}%)")
+        st.progress(porcentaje_rentabilidad)
+        
+        st.write(f"🔴 Gastos de Operación ({porcentaje_gasto*100:.0f}%)")
+        st.progress(porcentaje_gasto)
+    else:
+        st.info("Registra ventas para ver el análisis de rentabilidad.")
+
+    # --- SECCIÓN SEGURO DE REINICIO DE CAJA ---
+    st.markdown("---")
+    st.markdown("<h5 style='color: #FF0055;'>🧹 Zona de Seguridad</h5>", unsafe_allow_html=True)
+    
+    # Etiqueta limpia que solo dice "Contraseña:" para máxima discreción
+    clave_caja = st.text_input("Contraseña:", type="password", key="clave_caja_web")
+    if clave_caja == "1992":
+        if st.button("⚠️ CONFIRMAR REINICIO COMPLETO DE CAJA", key="btn_reiniciar_caja_web"):
+            api_url = st.session_state["api_url"]
+            with st.spinner("Borrando base de datos central..."):
+                try:
+                    payload = {"action": "reiniciar"}
+                    response = requests.post(api_url, json=payload, timeout=5)
+                    if response.status_code == 200:
+                        st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
+                        st.success("¡Base de datos en Google Sheets borrada con éxito!")
+                        st.rerun()
+                    else:
+                        st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
+                except Exception as e:
+                    st.error(f"Error de conexión con el servidor: {e}")
