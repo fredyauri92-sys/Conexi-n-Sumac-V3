@@ -103,6 +103,51 @@ st.markdown("""
         background-color: #1E1E1E !important;
         padding: 15px !important;
     }
+
+    /* =========================================================================
+       SÚPER RE-DISEÑO COMPACTO DE COLUMNAS (EVITA EL COLAPSO VERTICAL EN MÓVIL)
+       ========================================================================= */
+    /* Forzar que las columnas de productos se mantengan una al lado de la otra (2 productos por fila) */
+    div[data-testid="stHorizontalBlock"]:has(div[id*="target-anchor-"]) {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(div[id*="target-anchor-"]) > div[data-testid="column"] {
+        width: 100% !important;
+        min-width: 0 !important;
+        flex: 1 1 0% !important;
+        padding: 0 !important;
+    }
+
+    /* Forzar que la subdivisión (Caldo a la izquierda y modificadores a la derecha) NO colapse */
+    div[data-testid="stHorizontalBlock"]:has(div[id*="sub-anchor-"]) {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(div[id*="sub-anchor-"]) > div[data-testid="column"] {
+        width: auto !important;
+        min-width: 0 !important;
+        flex: 1 1 0% !important;
+        padding: 0 !important;
+    }
+
+    /* Forzar que el botón de Huevo/Vaso y su precio se mantengan en fila horizontal */
+    div[data-testid="stHorizontalBlock"]:has(div[id*="egg-anchor-"]),
+    div[data-testid="stHorizontalBlock"]:has(div[id*="taper-anchor-"]) {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 2px !important;
+        align-items: center !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(div[id*="egg-anchor-"]) > div[data-testid="column"],
+    div[data-testid="stHorizontalBlock"]:has(div[id*="taper-anchor-"]) > div[data-testid="column"] {
+        width: auto !important;
+        min-width: 0 !important;
+        flex: 1 1 0% !important;
+        padding: 0 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -208,9 +253,9 @@ def obtener_datetime_sort(fecha_str):
         numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
             if len(numbers) == 4:
-                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
             else:
-                return datetime(int(numbers[2]), int(numbers[1]), int(numbers[0]), int(numbers[3]), int(numbers[4]))
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
     except Exception:
         pass
     return datetime.min
@@ -518,8 +563,9 @@ with tab_ventas:
             cant1 = contar_vendidos_hoy(p1["nombre"])
             es_caldo1 = p1.get("lleva_taper", False)
             
-            # Si lleva táper/modificadores, dividimos horizontalmente (Caldos): izquierda (caldo) y derecha (modificadores)
+            # Si lleva táper/modificadores, dividimos horizontalmente: izquierda (caldo) y derecha (modificadores)
             if es_caldo1:
+                st.markdown(f'<div id="sub-anchor-{i}"></div>', unsafe_allow_html=True)
                 sub_left, sub_right = st.columns([0.62, 0.38])
             else:
                 sub_left = st.container()
@@ -548,7 +594,7 @@ with tab_ventas:
                     overflow: hidden !important;
                     transition: transform 0.2s, box-shadow 0.2s !important;
                     display: block !important;
-                    margin: 0 auto 5px auto !important;
+                    margin: 0 auto 3px auto !important;
                 }}
                 div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
                     transform: scale(1.05) !important;
@@ -571,16 +617,16 @@ with tab_ventas:
                         st.session_state["reproducir_sonido"] = True
                         st.rerun()
                 
-                # Descripción centrada
-                st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 13px; line-height: 1.2;'>🍲 {p1['nombre']}</div>", unsafe_allow_html=True)
-                st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-bottom: 5px;'>S/. {p1['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 5px;'>• Hoy: {cant1}</span></p>", unsafe_allow_html=True)
+                # Descripción centrada súper compacta
+                st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 12px; line-height: 1.1; margin-top: -2px;'>🍲 {p1['nombre']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-bottom: 2px;'>S/. {p1['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 3px;'>• Hoy: {cant1}</span></p>", unsafe_allow_html=True)
                 
             if es_caldo1 and sub_right is not None:
                 with sub_right:
-                    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
                     
                     # --- MODIFICADOR HUEVO EXTRA (🥚) ---
-                    col_egg_btn, col_egg_txt = st.columns([0.5, 0.5])
+                    col_egg_btn, col_egg_txt = st.columns([0.45, 0.55])
                     with col_egg_btn:
                         st.markdown(f"""
                         <div id="egg-anchor-{i}"></div>
@@ -589,9 +635,9 @@ with tab_ventas:
                             background-color: #1E1E1E !important;
                             border: 2px solid #00FF66 !important;
                             border-radius: 50% !important;
-                            width: 42px !important;
-                            height: 42px !important;
-                            font-size: 21px !important;
+                            width: 38px !important;
+                            height: 38px !important;
+                            font-size: 19px !important;
                             display: flex !important;
                             align-items: center !important;
                             justify-content: center !important;
@@ -616,12 +662,12 @@ with tab_ventas:
                                 st.session_state["reproducir_sonido"] = True
                                 st.rerun()
                     with col_egg_txt:
-                        st.markdown("<div style='font-size: 11px; font-weight: bold; color: #00FF66; margin-top: 10px; text-align: left; line-height: 1.1;'>Huevo<br>S/.1.0</div>", unsafe_allow_html=True)
+                        st.markdown("<div style='font-size: 10px; font-weight: bold; color: #00FF66; margin-top: 4px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
                         
-                    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                     
                     # --- MODIFICADOR TÁPER (Representado con Vaso de Vidrio Transparente 🥃) ---
-                    col_taper_btn, col_taper_txt = st.columns([0.5, 0.5])
+                    col_taper_btn, col_taper_txt = st.columns([0.45, 0.55])
                     with col_taper_btn:
                         st.markdown(f"""
                         <div id="taper-anchor-{i}"></div>
@@ -630,9 +676,9 @@ with tab_ventas:
                             background-color: #1E1E1E !important;
                             border: 2px solid #2979FF !important;
                             border-radius: 50% !important;
-                            width: 42px !important;
-                            height: 42px !important;
-                            font-size: 21px !important;
+                            width: 38px !important;
+                            height: 38px !important;
+                            font-size: 19px !important;
                             display: flex !important;
                             align-items: center !important;
                             justify-content: center !important;
@@ -657,7 +703,7 @@ with tab_ventas:
                                 st.session_state["reproducir_sonido"] = True
                                 st.rerun()
                     with col_taper_txt:
-                        st.markdown("<div style='font-size: 11px; font-weight: bold; color: #2979FF; margin-top: 10px; text-align: left; line-height: 1.1;'>Vaso<br>S/.1.0</div>", unsafe_allow_html=True)
+                        st.markdown("<div style='font-size: 10px; font-weight: bold; color: #2979FF; margin-top: 4px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
                 
         # ---- PRODUCTO 2 ----
         if i + 1 < len(PRODUCTOS_INFO):
@@ -667,8 +713,9 @@ with tab_ventas:
                 es_caldo2 = p2.get("lleva_taper", False)
                 icono_p2 = p2.get("icono", "🥤")
                 
-                # Si lleva táper/modificadores, dividimos horizontalmente (Caldos): izquierda (caldo) y derecha (modificadores)
+                # Si lleva táper/modificadores, dividimos horizontalmente: izquierda (caldo) y derecha (modificadores)
                 if es_caldo2:
+                    st.markdown(f'<div id="sub-anchor-{i+1}"></div>', unsafe_allow_html=True)
                     sub_left2, sub_right2 = st.columns([0.62, 0.38])
                 else:
                     sub_left2 = st.container()
@@ -697,7 +744,7 @@ with tab_ventas:
                         overflow: hidden !important;
                         transition: transform 0.2s, box-shadow 0.2s !important;
                         display: block !important;
-                        margin: 0 auto 5px auto !important;
+                        margin: 0 auto 3px auto !important;
                     }}
                     div.element-container:has(#target-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:hover {{
                         transform: scale(1.05) !important;
@@ -720,16 +767,16 @@ with tab_ventas:
                             st.session_state["reproducir_sonido"] = True
                             st.rerun()
                     
-                    # Descripción centrada
-                    st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 13px; line-height: 1.2;'>{icono_p2} {p2['nombre']}</div>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-bottom: 5px;'>S/. {p2['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 5px;'>• Hoy: {cant2}</span></p>", unsafe_allow_html=True)
+                    # Descripción centrada súper compacta
+                    st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 12px; line-height: 1.1; margin-top: -2px;'>{icono_p2} {p2['nombre']}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='text-align: center; color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0; padding-bottom: 2px;'>S/. {p2['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 5px;'>• Hoy: {cant2}</span></p>", unsafe_allow_html=True)
                     
                 if es_caldo2 and sub_right2 is not None:
                     with sub_right2:
-                        st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
                         
                         # --- MODIFICADOR HUEVO EXTRA (🥚) ---
-                        col_egg_btn2, col_egg_txt2 = st.columns([0.5, 0.5])
+                        col_egg_btn2, col_egg_txt2 = st.columns([0.45, 0.55])
                         with col_egg_btn2:
                             st.markdown(f"""
                             <div id="egg-anchor-{i+1}"></div>
@@ -738,9 +785,9 @@ with tab_ventas:
                                 background-color: #1E1E1E !important;
                                 border: 2px solid #00FF66 !important;
                                 border-radius: 50% !important;
-                                width: 42px !important;
-                                height: 42px !important;
-                                font-size: 21px !important;
+                                width: 38px !important;
+                                height: 38px !important;
+                                font-size: 19px !important;
                                 display: flex !important;
                                 align-items: center !important;
                                 justify-content: center !important;
@@ -765,12 +812,12 @@ with tab_ventas:
                                     st.session_state["reproducir_sonido"] = True
                                     st.rerun()
                         with col_egg_txt2:
-                            st.markdown("<div style='font-size: 11px; font-weight: bold; color: #00FF66; margin-top: 10px; text-align: left; line-height: 1.1;'>Huevo<br>S/.1.0</div>", unsafe_allow_html=True)
+                            st.markdown("<div style='font-size: 10px; font-weight: bold; color: #00FF66; margin-top: 4px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
                             
-                        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                         
                         # --- MODIFICADOR TÁPER (Representado con Vaso de Vidrio Transparente 🥃) ---
-                        col_taper_btn2, col_taper_txt2 = st.columns([0.5, 0.5])
+                        col_taper_btn2, col_taper_txt2 = st.columns([0.45, 0.55])
                         with col_taper_btn2:
                             st.markdown(f"""
                             <div id="taper-anchor-{i+1}"></div>
@@ -779,9 +826,9 @@ with tab_ventas:
                                 background-color: #1E1E1E !important;
                                 border: 2px solid #2979FF !important;
                                 border-radius: 50% !important;
-                                width: 42px !important;
-                                height: 42px !important;
-                                font-size: 21px !important;
+                                width: 38px !important;
+                                height: 38px !important;
+                                font-size: 19px !important;
                                 display: flex !important;
                                 align-items: center !important;
                                 justify-content: center !important;
@@ -806,7 +853,7 @@ with tab_ventas:
                                     st.session_state["reproducir_sonido"] = True
                                     st.rerun()
                         with col_taper_txt2:
-                            st.markdown("<div style='font-size: 11px; font-weight: bold; color: #2979FF; margin-top: 10px; text-align: left; line-height: 1.1;'>Vaso<br>S/.1.0</div>", unsafe_allow_html=True)
+                            st.markdown("<div style='font-size: 10px; font-weight: bold; color: #2979FF; margin-top: 4px; text-align: left; line-height: 1;'>S/.1.0</div>", unsafe_allow_html=True)
 
     # Lanzador de sonido
     if st.session_state["reproducir_sonido"]:
@@ -824,7 +871,7 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenamos cronológicamente en memoria ultra-rápida (dt pre-parseado, cero delay)
-            movimientos.sort(key=lambda x: x[0], reverse=True)
+            movimientos.sort(key=lambda x: x, reverse=True)
         except Exception:
             movimientos.reverse()
         for dt_obj, fecha, detalle, monto in movimientos:
@@ -850,7 +897,7 @@ with tab_gastos:
                     st.session_state["reproducir_sonido"] = True
                     st.rerun()
             else:
-                st.error("Por favor ingresa una descripción y un monto válido.")
+                st.error("Por favor ingresa una descripción and un monto válido.")
 
     st.markdown("<br><h5 style='color: #CFD8DC;'>📋 Gastos de hoy registrados:</h5>", unsafe_allow_html=True)
     if datos["compras"]:
@@ -925,3 +972,4 @@ with tab_caja:
                         st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
                 except Exception as e:
                     st.error(f"Error de conexión con el servidor: {e}")
+,TargetFile:/workspace/scratch/app.py}
