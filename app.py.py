@@ -124,7 +124,7 @@ st.markdown("""
     }
 
     /* Centrar perfectamente cada contenedor de elemento (imagen, descripción, precio) en la recta vertical */
-    div[data-testid="column"]:has(div[id*="target-anchor-"]) div.element-container {
+    div[data-testid="column"] div.element-container {
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
@@ -133,19 +133,19 @@ st.markdown("""
     }
 
     /* Forzar que el Markdown llene todo el ancho y se centre */
-    div[data-testid="column"]:has(div[id*="target-anchor-"]) .stMarkdown {
+    div[data-testid="column"] .stMarkdown {
         width: 100% !important;
         display: flex !important;
         justify-content: center !important;
         text-align: center !important;
     }
-    div[data-testid="column"]:has(div[id*="target-anchor-"]) .stMarkdown > div {
+    div[data-testid="column"] .stMarkdown > div {
         width: 100% !important;
         text-align: center !important;
     }
 
     /* Asegurar que el stButton dentro de la columna esté centrado */
-    div[data-testid="column"]:has(div[id*="target-anchor-"]) div[data-testid="stButton"] {
+    div[data-testid="column"] div[data-testid="stButton"] {
         display: flex !important;
         justify-content: center !important;
         width: 100% !important;
@@ -563,7 +563,7 @@ def extraer_hora(fecha_str):
         return "--:--"
     try:
         clean_str = fecha_str.replace("T", " ").replace("Z", "")
-        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})$", "", clean_str)
+        clean_str = re.sub(r"([+-]\\d{2}:?\\\\d{2})$", "", clean_str)
         
         if len(clean_str) > 16:
             dt = datetime.strptime(clean_str[:19], "%Y-%m-%d %H:%M:%S")
@@ -581,7 +581,7 @@ def extraer_hora(fecha_str):
         if is_utc:
             dt = dt - timedelta(hours=5)
     except Exception:
-        match = re.search(r"(\d{1,2}):(\d{2})", fecha_str)
+        match = re.search(r"(\\d{1,2}):(\\d{2})", fecha_str)
         if match:
             hh = int(match.group(1))
             mm = match.group(2)
@@ -637,7 +637,7 @@ with tab_ventas:
                 overflow: hidden !important;
                 transition: transform 0.2s, box-shadow 0.2s !important;
                 display: block !important;
-                margin: 0 !important;
+                margin: 0 auto 3px auto !important;
             }}
             div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
                 transform: scale(1.05) !important;
