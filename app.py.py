@@ -268,6 +268,10 @@ if "datos_cache" not in st.session_state:
 
 datos = st.session_state["datos_cache"]
 
+# Inicializar estado de sonido de forma segura para evitar KeyErrors
+if "reproducir_sonido" not in st.session_state:
+    st.session_state["reproducir_sonido"] = False
+
 # Menú de Productos de Caldería Sumac con rutas de imagen reales
 PRODUCTOS_INFO = [
     {"nombre": "Caldo sin presa", "precio": 5.0, "icono": "🍲", "imagen": "caldo_sin_presa.png", "lleva_taper": True},
@@ -319,9 +323,9 @@ def obtener_datetime_sort(fecha_str):
         numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
             if len(numbers) == 4: # Año primero (YYYY-MM-DD)
-                return datetime(int(numbers), int(numbers[1]), int(numbers[3]), int(numbers[2]), int(numbers[4]))
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
             else: # Día primero (DD-MM-YYYY)
-                return datetime(int(numbers[3]), int(numbers[1]), int(numbers), int(numbers[2]), int(numbers[4]))
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
     except Exception:
         pass
     return datetime.min
@@ -369,7 +373,7 @@ def extraer_hora(fecha_str):
     
     return dt.strftime("%I:%M %p")
 
-# Pestañas de navegación móvil cómoda en la parte superior (Añadido tab_personal)
+# Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_personal, tab_caja = st.tabs([
     "🛒 Registrar Ventas", 
     "💸 Anotar Gastos", 
@@ -420,7 +424,7 @@ with tab_ventas:
                             st.session_state["reproducir_sonido"] = True
                             st.rerun()
                 with col_txt_h:
-                    st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🥚</span> <span style='font-size: 13px; color: #00FF66; font-weight: bold; vertical-align: middle;'>Huevo S/. 1.00</span>", unsafe_allow_html=True)
+                    st.markdown("<span style='font-size: 26px; vertical-align: middle;'>🥚</span> <span style='font-size: 13px; color: #00FF66; font-weight: bold; vertical-align: middle;'>Huevo S/. 1.00</span>", unsafe_allow_html=True)
                 
                 # Botón independiente de Táper de Litro (Asociado al Caldo actual)
                 col_btn_t, col_txt_t = st.columns([0.4, 0.6])
@@ -507,7 +511,7 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenamos cronológicamente de fin a inicio (el más nuevo primero) usando datetime real
-            movimientos.sort(key=lambda x: obtener_datetime_sort(x), reverse=True)
+            movimientos.sort(key=lambda x: obtener_datetime_sort(x[0]), reverse=True)
         except Exception:
             # Si falla, simplemente revertimos el orden de registro original (Sheets los entrega de inicio a fin)
             movimientos.reverse()
