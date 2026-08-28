@@ -733,4 +733,112 @@ with tab_ventas:
 
     st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno:</h5>", unsafe_allow_html=True)
     
-    # ... Resto de la interfaz de Gastos, Caja, etc. permanece exactamente igual ...
+    movimientos = []
+    for v in datos["ventas"]:
+        movimientos.append((v.get("dt", datetime.min), v["fecha"], f"🟢 VENTA - {v['producto']}", v["total"]))
+    for c in datos["compras"]:
+        movimientos.append((c.get("dt", datetime.min), c["fecha"], f"🔴 GASTO - {c['detalle']}", -c["monto"]))
+        
+    if movimientos:
+        try:
+            movimientos.sort(key=lambda x: x, reverse=True)
+        except Exception:
+            movimientos.reverse()
+        for dt_obj, fecha, detalle, monto in movimientos:
+            color_txt = "#00FF66" if "VENTA" in detalle else "#FF0055"
+            hora = extraer_hora(fecha)
+            st.markdown(f"<!-- {fecha} --><div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{detalle}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(monto):.2f} ({hora})</span></div>", unsafe_allow_html=True)
+    else:
+        st.info("No hay movimientos registrados hoy.")
+
+with tab_gastos:
+    st.markdown("<h4 style='color: #CFD8DC;'>Anotar un Gasto de Caja:</h4>", unsafe_allow_html=True)
+    
+    with st.form("formulario_gastos_sumac", clear_on_submit=True):
+        desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)")
+        monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0, value=None)
+        
+        btn_registrar = st.form_submit_button("💾 Registrar Gasto en Caja")
+        
+        if btn_registrar:
+            if desc_gasto and monto_gasto is not None and monto_gasto > 0:
+                if registrar_movimiento_instantaneo("GASTO", desc_gasto, monto_gasto):
+                    st.toast(f"🔴 Gasto registrado: {desc_gasto} (S/. {monto_gasto:.2f})", icon="💸")
+                    st.session_state["reproducir_sonido"] = "gasto"
+                    st.rerun()
+            else:
+                st.error("Por favor ingresa una descripción y un monto válido.")
+
+    st.markdown("<br><h5 style='color: #CFD8DC;'>📋 Gastos de hoy registrados:</h5>", unsafe_allow_html=True)
+    if datos["compras"]:
+        gastos_hoy = datos["compras"]
+        try:
+            gastos_hoy_sorted = sorted(gastos_hoy, key=lambda x: x.get("dt", datetime.min), reverse=True)
+        except:
+            gastos_hoy_sorted = gastos_hoy
+            
+        for g in gastos_hoy_sorted:
+            fecha = g.get("fecha", "")
+            hora = extraer_hora(fecha)
+            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #FF0055;'><span style='color: #FFEA00; font-weight: bold;'>• {g['detalle']}</span><span style='color: #FF0055; font-weight: bold;'>S/. {g['monto']:.2f} ({hora})</span></div>", unsafe_allow_html=True)
+    else:
+        st.info("No hay gastos registrados hoy.")
+
+with tab_caja:
+    st.markdown("<h4 style='text-align: center; color: #CFD8DC;'>💼 Finanzas del Turno</h4>", unsafe_allow_html=True)
+    
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
+        st.markdown("<span style='font-size: 13px; color: #CFD8DC;'>Sincronizar las ventas de todos los mozos:</span>", unsafe_allow_html=True)
+    with col_v2:
+        if st.button("🔄 Actualizar", key="btn_sync_caja"):
+            with st.spinner("Conectando..."):
+                st.session_state["datos_cache"] = cargar_datos_cloud()
+                st.rerun()
+
+    total_v = sum(v["total"] for v in datos["ventas"])
+    total_g = sum(c["monto"] for c in datos["compras"])
+    egresos = total_g
+    ganancia = total_v - egresos
+    
+    col_v, col_g = st.columns(2)
+    with col_v:
+        st.markdown(f"<div class='metric-box'>Ingresos<br><span class='metric-val-green'>S/. {total_v:.2f}</span></div>", unsafe_allow_html=True)
+    with col_g:
+        st.markdown(f"<div class='metric-box'>Gastos<br><span class='metric-val-red'>S/. {egresos:.2f}</span></div>", unsafe_allow_html=True)
+        
+    st.markdown(f"<div class='metric-box' style='background: #252525;'>GANANCIA NETA<br><span class='metric-val-blue' style='color: {'#00FF66' if ganancia >= 0 else '#FF0055'}'>S/. {ganancia:.2f}</span></div>", unsafe_allow_html=True)
+
+    if total_v > 0:
+        st.markdown("<br><h5 style='text-align: center; color: #CFD8DC;'>📊 Distribución Financiera:</h5>", unsafe_allow_html=True)
+        porcentaje_gasto = (egresos / total_v)
+        porcentaje_rentabilidad = max(0.0, 1.0 - porcentaje_gasto)
+        
+        st.write(f"🟢 Ganancia Neta ({porcentaje_rentabilidad*100:.0f}%)")
+        st.progress(porcentaje_rentabilidad)
+        
+        st.write(f"🔴 Gastos de Operación ({porcentaje_gasto*100:.0f}%)")
+        st.progress(porcentaje_gasto)
+    else:
+        st.info("Registra ventas para ver el análisis de rentabilidad.")
+
+    # --- SECCIÓN SEGURO DE REINICIO DE CAJA ---
+    st.markdown("---")
+    st.markdown("<h5 style='color: #FF0055;'>🧹 Zona de Seguridad</h5>", unsafe_allow_html=True)
+    
+    clave_caja = st.text_input("Contraseña:", type="password", key="clave_caja_web")
+    if clave_caja == "1992":
+        if st.button("⚠️ CONFIRMAR REINICIO COMPLETO DE CAJA", key="btn_reiniciar_caja_web"):
+            api_url = st.session_state["api_url"]
+            with st.spinner("Borrando base de datos central..."):
+                try:
+                    payload = {"action": "reiniciar"}
+                    response = requests.post(api_url, json=payload, timeout=5)
+                    if response.status_code == 200:
+                        st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
+                        st.success("¡Base de datos en Google Sheets borrada con éxito!")
+                        st.rerun()
+                    else:
+                        st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
+                except Exception as e:
+                    st.error(f"Error de conexión con el servidor: {e}")
