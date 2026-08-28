@@ -211,7 +211,7 @@ def enviar_a_sheets_bg(api_url, payload):
 
 def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
-    # Obtener la hora actual de Sicuani (Perú) que es UTC-5 de forma 100% segura
+    # Obtener la hora actual de Sicuani (Perú) que es UTC-5
     fecha_hoy = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S")
     
     # 1. Registrar LOCALMENTE en la memoria (caché) para actualizar la pantalla en MILISEGUNDOS
@@ -258,6 +258,10 @@ PRODUCTOS_INFO = [
     {"nombre": "Agua mineral", "precio": 1.0, "icono": "💧", "imagen": "agua_san_luis.png", "lleva_taper": False}
 ]
 
+# Inicializar estado de sonido
+if "reproducir_sonido" not in st.session_state:
+    st.session_state["reproducir_sonido"] = False
+
 # Helper para contar ventas consolidadas hoy por producto o detalle
 def contar_vendidos_hoy(nombre_base):
     total = 0
@@ -273,7 +277,7 @@ def obtener_datetime_sort(fecha_str):
     try:
         # Limpiar caracteres ISO y offset de zona horaria (Z, +00:00, etc.)
         clean_str = fecha_str.replace("T", " ").replace("Z", "").strip()
-        clean_str = re.sub(r"([+-]\d{2}:?\d{2})$", "", clean_str)
+        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})$", "", clean_str)
         
         # Intentar múltiples formatos comunes de fecha
         formatos = [
@@ -298,7 +302,7 @@ def obtener_datetime_sort(fecha_str):
         # Regex de emergencia para buscar bloques numéricos
         numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
-            if len(numbers) == 4: # Año primero (YYYY-MM-DD)
+            if len(numbers[0]) == 4: # Año primero (YYYY-MM-DD)
                 return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
             else: # Día primero (DD-MM-YYYY)
                 return datetime(int(numbers[2]), int(numbers[1]), int(numbers[0]), int(numbers[3]), int(numbers[4]))
@@ -313,7 +317,7 @@ def extraer_hora(fecha_str):
     try:
         # Limpiar caracteres ISO y offset de zona horaria (Z, +00:00, etc.)
         clean_str = fecha_str.replace("T", " ").replace("Z", "")
-        clean_str = re.sub(r"([+-]\d{2}:?\d{2})$", "", clean_str)
+        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})$", "", clean_str)
         
         if len(clean_str) > 16:
             dt = datetime.strptime(clean_str[:19], "%Y-%m-%d %H:%M:%S")
@@ -484,7 +488,6 @@ with tab_ventas:
         except Exception:
             # Si falla, simplemente revertimos el orden de registro original (Sheets los entrega de inicio a fin)
             movimientos.reverse()
-            
         for fecha, detalle, monto in movimientos:
             color_txt = "#00FF66" if "VENTA" in detalle else "#FF0055"
             hora = extraer_hora(fecha)
@@ -516,7 +519,7 @@ with tab_gastos:
         gastos_hoy = datos["compras"]
         try:
             # Ordenar los gastos de más reciente a más antiguo
-            gastos_hoy_sorted = sorted(gastos_hoy, key=lambda x: obtener_datetime_sort(x["fecha"]), reverse=True)
+            gastos_hoy_sorted = sorted(gastos_hoy, key=lambda x: x["fecha"], reverse=True)
         except:
             gastos_hoy_sorted = gastos_hoy
             
