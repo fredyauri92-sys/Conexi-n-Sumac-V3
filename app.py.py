@@ -215,7 +215,7 @@ def reproducir_sonido():
     """
     st.components.v1.html(js_sonido, height=0, width=0)
 
-# --- ENCABEZADO INTEGRADO PREMIUM (LOGO EN CACHÉ DE SESIÓN PARA MÁXIMA VELOCIDAD) ---
+# --- ENCABEZADO INTEGRADO PREMIUM (LOGO EN CACHÉ DE SESIÓN) ---
 if "logo_path" not in st.session_state:
     logo_path = None
     for l in ["yauri_cloud_logo_final.png", "yauri_cloud_logo_rectangular.png", "yauri_cloud_logo_futuristic_1.png"]:
@@ -287,7 +287,7 @@ def obtener_datetime_sort(fecha_str):
         pass
     return datetime.min
 
-# --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE Y PRE-PARSEO DE FECHAS ---
+# --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE ---
 def cargar_datos_cloud():
     api_url = st.session_state["api_url"]
     try:
@@ -452,7 +452,7 @@ def get_image_base64(img_path):
     return "" 
 
 
-# --- ESTADO INICIAL DEL SPLASH SCREEN (CONFIGURADO A 3 SEGUNDOS EXACTOS) ---
+# --- ESTADO INICIAL DEL SPLASH SCREEN (3 SEGUNDOS EXACTOS) ---
 if "splash_done" not in st.session_state:
     st.session_state["splash_done"] = False
 
@@ -537,7 +537,7 @@ if "imagenes_base64" not in st.session_state or len(st.session_state["imagenes_b
         img_n = p["imagen"]
         st.session_state["imagenes_base64"][img_n] = get_image_base64(img_n)
 
-# Función súper robusta para extraer la hora (HH:MM AM/PM) de cualquier formato de fecha
+# Función para extraer la hora (HH:MM AM/PM)
 def extraer_hora(fecha_str):
     if not fecha_str:
         return "--:--"
@@ -748,7 +748,6 @@ with tab_ventas:
                 icono_p2 = p2.get("icono", "🥤")
                 
                 # Siempre dividimos horizontalmente usando la proporción exacta [0.62, 0.38]
-                # de esta forma todas las fotos (de caldos y bebidas) quedan exactamente en la misma vertical
                 st.markdown(f'<div id="sub-anchor-{i+1}"></div>', unsafe_allow_html=True)
                 sub_left2, sub_right2 = st.columns([0.62, 0.38])
                     
@@ -901,7 +900,7 @@ with tab_ventas:
         reproducir_sonido()
         st.session_state["reproducir_sonido"] = False
 
-    st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno (Lista de registro):</h5>", unsafe_allow_html=True)
+    st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno:</h5>", unsafe_allow_html=True)
     
     movimientos = []
     for v in datos["ventas"]:
@@ -911,7 +910,6 @@ with tab_ventas:
         
     if movimientos:
         try:
-            # Ordenamos cronológicamente en memoria ultra-rápida (dt pre-parseado, cero delay)
             movimientos.sort(key=lambda x: x, reverse=True)
         except Exception:
             movimientos.reverse()
@@ -1013,4 +1011,3 @@ with tab_caja:
                         st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
                 except Exception as e:
                     st.error(f"Error de conexión con el servidor: {e}")
-,TargetFile:/workspace/scratch/app.py}
