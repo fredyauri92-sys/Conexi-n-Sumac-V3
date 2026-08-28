@@ -104,6 +104,43 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- REPRODUCTOR DE SONIDO DIGITAL WEB AUDIO API (CHA-CHING) ---
+def reproducir_sonido():
+    js_sonido = """
+    <script>
+    try {
+        var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Tono 1 (Monedita inicial de caja registradora)
+        var osc1 = audioCtx.createOscillator();
+        var gain1 = audioCtx.createGain();
+        osc1.type = 'triangle';
+        osc1.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota A5
+        gain1.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start();
+        osc1.stop(audioCtx.currentTime + 0.15);
+        
+        // Tono 2 (Campanazo agudo "ching")
+        var osc2 = audioCtx.createOscillator();
+        var gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1480, audioCtx.currentTime + 0.08); // Nota aguda brillante
+        gain2.gain.setValueAtTime(0.12, audioCtx.currentTime + 0.08);
+        gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.38);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(audioCtx.currentTime + 0.08);
+        osc2.stop(audioCtx.currentTime + 0.38);
+    } catch(e) {
+        console.log("AudioContext bloqueado o no soportado:", e);
+    }
+    </script>
+    """
+    st.components.v1.html(js_sonido, height=0, width=0)
+
 # --- ENCABEZADO INTEGRADO PREMIUM (LOGO "YAURI CLOUD" MINI AL 40% EN LA ESQUINA SUPERIOR IZQUIERDA) ---
 col_logo, col_titulo = st.columns([0.45, 3.55])
 
@@ -220,6 +257,10 @@ PRODUCTOS_INFO = [
     {"nombre": "Agua mineral", "precio": 1.0, "icono": "💧", "imagen": "agua_san_luis.png", "lleva_taper": False}
 ]
 
+# Inicializar estado de sonido
+if "reproducir_sonido" not in st.session_state:
+    st.session_state["reproducir_sonido"] = False
+
 # Helper para contar ventas consolidadas hoy por producto o detalle
 def contar_vendidos_hoy(nombre_base):
     total = 0
@@ -228,7 +269,7 @@ def contar_vendidos_hoy(nombre_base):
             total += 1
     return total
 
-# Función súper robusta para extraer la hora (HH:MM) de cualquier formato de fecha
+# Función para extraer la hora (HH:MM) de forma 100% segura
 def extraer_hora(fecha_str):
     if not fecha_str:
         return "--:--"
@@ -252,9 +293,6 @@ tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anota
 with tab_ventas:
     st.markdown("<h4 style='color: #CFD8DC;'>Selecciona para vender:</h4>", unsafe_allow_html=True)
     
-    # Hora del sistema para mostrar en la descripción de las tarjetas en tiempo real
-    hora_sistema = datetime.now().strftime("%H:%M")
-    
     # Grid de imágenes de producto y botones de venta de 2 en 2
     for i in range(0, len(PRODUCTOS_INFO), 2):
         col1, col2 = st.columns(2)
@@ -269,39 +307,42 @@ with tab_ventas:
             cant1 = contar_vendidos_hoy(p1["nombre"])
             es_caldo1 = p1.get("lleva_taper", False)
             
-            # 2. Descripción del Caldo, su Valor y la Hora
+            # 2. Descripción del Caldo y su Valor (Sin Hora)
             st.markdown(f"**🍲 {p1['nombre']}**")
-            st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p1['precio']:.2f} • 🕒 {hora_sistema}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p1['precio']:.2f}</p>", unsafe_allow_html=True)
             
-            # 3. Botón Principal: Vende el Caldo base INDEPENDIENTE de manera inmediata
+            # 3. Botón de Caldo Base (Registra al instante de forma independiente)
             label_p1 = f"🛒 Registrar Caldo\n[ S/. {p1['precio']:.2f} | Hoy: {cant1} ]"
             if st.button(label_p1, key=f"btn_sell_caldo_{i}"):
                 if registrar_movimiento_instantaneo("VENTA", p1["nombre"], p1["precio"]):
                     st.toast(f"🟢 Venta registrada: {p1['nombre']}", icon="🍲")
+                    st.session_state["reproducir_sonido"] = True
                     st.rerun()
             
-            # 4. Botones de Modificadores (Huevo / Táper) independientes del caldo
+            # 4. Botones de Modificadores (Registro directo e independiente al instante)
             if es_caldo1:
                 st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
                 
-                # Botón independiente de Huevo Extra
+                # Botón independiente de Huevo Extra (Registra directamente al tocar la ➕)
                 col_btn_h, col_txt_h = st.columns([0.4, 0.6])
                 with col_btn_h:
                     if st.button("➕", key=f"btn_h_indep_{i}"):
-                        nombre_huevo = "Huevo Extra"
+                        nombre_huevo = f"{p1['nombre']} (+1 huevo)"
                         if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
-                            st.toast("🟢 +1 Huevo Extra registrado", icon="🥚")
+                            st.toast(f"🥚 +1 Huevo registrado", icon="🥚")
+                            st.session_state["reproducir_sonido"] = True
                             st.rerun()
                 with col_txt_h:
                     st.markdown("<span style='font-size: 12px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 6px;'>🥚 S/. 1.00</span>", unsafe_allow_html=True)
                 
-                # Botón independiente de Táper para llevar
+                # Botón independiente de Táper de Litro (Registra directamente al tocar la ➕)
                 col_btn_t, col_txt_t = st.columns([0.4, 0.6])
                 with col_btn_t:
                     if st.button("➕", key=f"btn_t_indep_{i}"):
-                        nombre_taper = "Táper de Litro"
+                        nombre_taper = f"{p1['nombre']} (en táper)"
                         if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
-                            st.toast("🛍️ +1 Táper registrado", icon="🛍️")
+                            st.toast(f"🛍️ +1 Táper registrado", icon="🛍️")
+                            st.session_state["reproducir_sonido"] = True
                             st.rerun()
                 with col_txt_t:
                     st.markdown("<span style='font-size: 12px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 6px;'>🛍️ S/. 1.00</span>", unsafe_allow_html=True)
@@ -316,12 +357,12 @@ with tab_ventas:
                 cant2 = contar_vendidos_hoy(p2["nombre"])
                 es_caldo2 = p2.get("lleva_taper", False)
                 
-                # Descripción, valor y hora
+                # Descripción del Producto
                 icono_p2 = p2.get("icono", "🥤")
                 st.markdown(f"**{icono_p2} {p2['nombre']}**")
-                st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p2['precio']:.2f} • 🕒 {hora_sistema}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p2['precio']:.2f}</p>", unsafe_allow_html=True)
                 
-                # Botón de venta del producto base independiente (bebidas / caldos)
+                # Botón Base
                 if es_caldo2:
                     label_p2 = f"🛒 Registrar Caldo\n[ S/. {p2['precio']:.2f} | Hoy: {cant2} ]"
                 else:
@@ -330,9 +371,10 @@ with tab_ventas:
                 if st.button(label_p2, key=f"btn_sell_caldo_{i+1}"):
                     if registrar_movimiento_instantaneo("VENTA", p2["nombre"], p2["precio"]):
                         st.toast(f"🟢 Venta registrada: {p2['nombre']}", icon=icono_p2)
+                        st.session_state["reproducir_sonido"] = True
                         st.rerun()
                 
-                # Botones de Modificadores (Huevo / Táper) independientes si es caldo
+                # Botones de Modificadores (Registro independiente)
                 if es_caldo2:
                     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
                     
@@ -340,23 +382,30 @@ with tab_ventas:
                     col_btn_h2, col_txt_h2 = st.columns([0.4, 0.6])
                     with col_btn_h2:
                         if st.button("➕", key=f"btn_h_indep_{i+1}"):
-                            nombre_huevo = "Huevo Extra"
+                            nombre_huevo = f"{p2['nombre']} (+1 huevo)"
                             if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
-                                st.toast("🟢 +1 Huevo Extra registrado", icon="🥚")
+                                st.toast(f"🥚 +1 Huevo registrado", icon="🥚")
+                                st.session_state["reproducir_sonido"] = True
                                 st.rerun()
                     with col_txt_h2:
                         st.markdown("<span style='font-size: 12px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 6px;'>🥚 S/. 1.00</span>", unsafe_allow_html=True)
                     
-                    # Botón independiente de Táper para llevar
+                    # Botón independiente de Táper de Litro
                     col_btn_t2, col_txt_t2 = st.columns([0.4, 0.6])
                     with col_btn_t2:
                         if st.button("➕", key=f"btn_t_indep_{i+1}"):
-                            nombre_taper = "Táper de Litro"
+                            nombre_taper = f"{p2['nombre']} (en táper)"
                             if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
-                                st.toast("🛍️ +1 Táper registrado", icon="🛍️")
+                                st.toast(f"🛍️ +1 Táper registrado", icon="🛍️")
+                                st.session_state["reproducir_sonido"] = True
                                 st.rerun()
                     with col_txt_t2:
                         st.markdown("<span style='font-size: 12px; color: #00FF66; font-weight: bold; display: inline-block; padding-top: 6px;'>🛍️ S/. 1.00</span>", unsafe_allow_html=True)
+
+    # Lanzador de sonido
+    if st.session_state["reproducir_sonido"]:
+        reproducir_sonido()
+        st.session_state["reproducir_sonido"] = False
 
     st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno (Lista de registro):</h5>", unsafe_allow_html=True)
     
@@ -392,6 +441,7 @@ with tab_gastos:
             if desc_gasto and monto_gasto is not None and monto_gasto > 0:
                 if registrar_movimiento_instantaneo("GASTO", desc_gasto, monto_gasto):
                     st.toast(f"🔴 Gasto registrado: {desc_gasto} (S/. {monto_gasto:.2f})", icon="💸")
+                    st.session_state["reproducir_sonido"] = True
                     st.rerun()
             else:
                 st.error("Por favor ingresa una descripción y un monto válido.")
