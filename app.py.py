@@ -303,10 +303,10 @@ def obtener_datetime_sort(fecha_str):
         # Regex de emergencia para buscar bloques numéricos
         numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
-            if len(numbers) == 4: # Año primero (YYYY-MM-DD)
-                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
+            if len(numbers[0]) == 4: # Año primero (YYYY-MM-DD)
+                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
             else: # Día primero (DD-MM-YYYY)
-                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
+                return datetime(int(numbers[2]), int(numbers[1]), int(numbers[0]), int(numbers[3]), int(numbers[4]))
     except Exception:
         pass
     return datetime.min
@@ -436,14 +436,12 @@ with tab_ventas:
             cant1 = contar_vendidos_hoy(p1["nombre"])
             es_caldo1 = p1.get("lleva_taper", False)
             
-            # 1. Ancla invisible para identificar la ubicación exacta del botón en el DOM
-            st.markdown(f'<div id="target-anchor-{i}"></div>', unsafe_allow_html=True)
-            
-            # 2. Inyectar CSS global dinámico para convertir el st.button adyacente en la imagen clickable
+            # 1. Anclaje específico y estilo CSS súper acotado para evitar fugas a otros elementos o pestañas
             b64_img1 = get_image_base64(p1["imagen"])
             st.markdown(f"""
+            <div id="target-anchor-{i}"></div>
             <style>
-            div:has(#target-anchor-{i}) + div div[data-testid="stButton"] button {{
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button {{
                 background-image: url(data:image/png;base64,{b64_img1}) !important;
                 background-color: transparent !important;
                 background-repeat: no-repeat !important;
@@ -460,15 +458,15 @@ with tab_ventas:
                 display: block !important;
                 margin: 0 auto 5px auto !important;
             }}
-            div:has(#target-anchor-{i}) + div div[data-testid="stButton"] button:hover {{
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
                 transform: scale(1.05) !important;
                 box-shadow: 0px 6px 15px rgba(255, 234, 0, 0.4) !important;
                 border-color: #FFEA00 !important;
             }}
-            div:has(#target-anchor-{i}) + div div[data-testid="stButton"] button:active {{
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:active {{
                 transform: scale(0.98) !important;
             }}
-            div:has(#target-anchor-{i}) + div div[data-testid="stButton"] button * {{
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button * {{
                 display: none !important;
             }}
             </style>
@@ -521,14 +519,12 @@ with tab_ventas:
                 es_caldo2 = p2.get("lleva_taper", False)
                 icono_p2 = p2.get("icono", "🥤")
                 
-                # 1. Ancla invisible para identificar la ubicación exacta del botón en el DOM
-                st.markdown(f'<div id="target-anchor-{i+1}"></div>', unsafe_allow_html=True)
-                
-                # 2. Inyectar CSS global dinámico para convertir el st.button adyacente en la imagen clickable
+                # 1. Anclaje específico y estilo CSS súper acotado para evitar fugas a otros elementos o pestañas
                 b64_img2 = get_image_base64(p2["imagen"])
                 st.markdown(f"""
+                <div id="target-anchor-{i+1}"></div>
                 <style>
-                div:has(#target-anchor-{i+1}) + div div[data-testid="stButton"] button {{
+                div.element-container:has(#target-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button {{
                     background-image: url(data:image/png;base64,{b64_img2}) !important;
                     background-color: transparent !important;
                     background-repeat: no-repeat !important;
@@ -545,15 +541,15 @@ with tab_ventas:
                     display: block !important;
                     margin: 0 auto 5px auto !important;
                 }}
-                div:has(#target-anchor-{i+1}) + div div[data-testid="stButton"] button:hover {{
+                div.element-container:has(#target-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:hover {{
                     transform: scale(1.05) !important;
                     box-shadow: 0px 6px 15px rgba(255, 234, 0, 0.4) !important;
                     border-color: #FFEA00 !important;
                 }}
-                div:has(#target-anchor-{i+1}) + div div[data-testid="stButton"] button:active {{
+                div.element-container:has(#target-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button:active {{
                     transform: scale(0.98) !important;
                 }}
-                div:has(#target-anchor-{i+1}) + div div[data-testid="stButton"] button * {{
+                div.element-container:has(#target-anchor-{i+1}) + div.element-container div[data-testid="stButton"] button * {{
                     display: none !important;
                 }}
                 </style>
@@ -592,7 +588,7 @@ with tab_ventas:
                         if st.button("➕", key=f"btn_t_indep_{i+1}"):
                             nombre_taper = f"{p2['nombre']} (en táper)"
                             if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
-                                rpt = st.toast(f"🛍️ +1 Táper registrado", icon="🛍️")
+                                st.toast(f"🛍️ +1 Táper registrado", icon="🛍️")
                                 st.session_state["reproducir_sonido"] = True
                                 st.rerun()
                     with col_txt_t2:
@@ -614,7 +610,7 @@ with tab_ventas:
     if movimientos:
         try:
             # Ordenamos cronológicamente de fin a inicio (el más nuevo primero) usando datetime real
-            movimientos.sort(key=lambda x: obtener_datetime_sort(x[0]), reverse=True)
+            movimientos.sort(key=lambda x: obtener_datetime_sort(x), reverse=True)
         except Exception:
             # Si falla, simplemente revertimos el orden de registro original (Sheets los entrega de inicio a fin)
             movimientos.reverse()
