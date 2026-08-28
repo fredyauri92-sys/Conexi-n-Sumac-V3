@@ -354,35 +354,13 @@ def extraer_hora(fecha_str):
     
     return dt.strftime("%I:%M %p")
 
-
-# --- FUNCIÓN PARA RENDERIZAR IMÁGENES CLICKABLES CON GLOW CYBER-ANDINO ---
-def render_clickable_image(img_path, product_name, key_suffix, width=110):
-    if os.path.exists(img_path):
+# --- FUNCIÓN PARA OBTENER BASE64 DE IMAGEN ---
+def get_image_base64(img_path):
+    import base64
+    if img_path and os.path.exists(img_path):
         with open(img_path, "rb") as f:
-            b64_str = base64.b64encode(f.read()).decode("utf-8")
-        
-        # HTML template for clickable image with yellow cyber-andino glow
-        html_code = f"""
-        <div style="text-align: center; margin-bottom: 5px;">
-            <img src="data:image/png;base64,{b64_str}" 
-                 style="width: {width}px; height: auto; border-radius: 15px; border: 1px solid #37474F; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" 
-                 onclick="
-                    const btns = (document.querySelectorAll('button') || window.parent.document.querySelectorAll('button'));
-                    for (const btn of btns) {{
-                        if (btn.innerText.includes('Registrar {product_name}')) {{
-                            btn.click();
-                            break;
-                        }}
-                    }}
-                 "
-                 onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0px 6px 15px rgba(255, 234, 0, 0.4)';" 
-                 onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0px 4px 10px rgba(0, 0, 0, 0.5)';"
-            />
-        </div>
-        """
-        st.markdown(html_code, unsafe_allow_html=True)
-    else:
-        st.warning(f"Falta imagen: {img_path}")
+            return base64.b64encode(f.read()).decode("utf-8")
+    return "" 
 
 # Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
@@ -400,22 +378,53 @@ with tab_ventas:
             cant1 = contar_vendidos_hoy(p1["nombre"])
             es_caldo1 = p1.get("lleva_taper", False)
             
-            # 1. Imagen del Producto Clickable
-            render_clickable_image(p1["imagen"], p1["nombre"], f"img_p1_{i}", width=110)
+            # Contenedor único para aplicar estilo de imagen de fondo al botón principal
+            st.markdown(f'<div class="product-column" id="prod-col-{i}">', unsafe_allow_html=True)
             
-            # 2. Descripción del Caldo y su Valor + Hoy Vendido
-            st.markdown(f"**🍲 {p1['nombre']}**")
-            st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p1['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 8px;'>• Hoy: {cant1}</span></p>", unsafe_allow_html=True)
+            b64_img1 = get_image_base64(p1["imagen"])
+            st.markdown(f"""
+            <style>
+            #prod-col-{i} div[data-testid="stButton"]:first-of-type button {{
+                background-image: url(data:image/png;base64,{b64_img1}) !important;
+                background-size: cover !important;
+                background-position: center !important;
+                width: 110px !important;
+                height: 110px !important;
+                border-radius: 15px !important;
+                border: 1px solid #37474F !important;
+                box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5) !important;
+                color: transparent !important;
+                overflow: hidden !important;
+                transition: transform 0.2s, box-shadow 0.2s !important;
+                display: block !important;
+                margin: 0 auto 5px auto !important;
+            }}
+            #prod-col-{i} div[data-testid="stButton"]:first-of-type button:hover {{
+                transform: scale(1.05) !important;
+                box-shadow: 0px 6px 15px rgba(255, 234, 0, 0.4) !important;
+                border-color: #FFEA00 !important;
+            }}
+            #prod-col-{i} div[data-testid="stButton"]:first-of-type button:active {{
+                transform: scale(0.98) !important;
+            }}
+            #prod-col-{i} div[data-testid="stButton"]:first-of-type button * {{
+                display: none !important;
+            }}
+            </style>
+            """, unsafe_allow_html=True)
             
-            # 3. Botón de Caldo Base (Invisible, sirve para disparar la acción de Streamlit)
-            label_p1 = f"Registrar {p1['nombre']}"
-            if st.button(label_p1, key=f"btn_sell_caldo_{i}"):
+            # El botón nativo de Streamlit, que se convierte visualmente en la imagen interactiva
+            if st.button("", key=f"btn_sell_caldo_{i}"):
                 if registrar_movimiento_instantaneo("VENTA", p1["nombre"], p1["precio"]):
                     st.toast(f"🟢 Venta registrada: {p1['nombre']}", icon="🍲")
                     st.session_state["reproducir_sonido"] = True
                     st.rerun()
             
-            # 4. Botones de Modificadores (Registro directo y asociado exactamente al caldo correspondiente)
+            # Descripción del Caldo y su Valor + Hoy Vendido
+            st.markdown(f"**🍲 {p1['nombre']}**")
+            st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p1['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 8px;'>• Hoy: {cant1}</span></p>", unsafe_allow_html=True)
+            
+            # Botones de Modificadores (Asociado exactamente al caldo correspondiente)
             if es_caldo1:
                 st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
                 
@@ -442,6 +451,8 @@ with tab_ventas:
                             st.rerun()
                 with col_txt_t:
                     st.markdown("<span style='font-size: 26px; vertical-align: middle;'>🛍️</span> <span style='font-size: 13px; color: #00FF66; font-weight: bold; vertical-align: middle;'>Táper S/. 1.00</span>", unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
                 
         # ---- PRODUCTO 2 ----
         if i + 1 < len(PRODUCTOS_INFO):
@@ -451,20 +462,51 @@ with tab_ventas:
                 es_caldo2 = p2.get("lleva_taper", False)
                 icono_p2 = p2.get("icono", "🥤")
                 
-                # 1. Imagen del Producto Clickable
-                render_clickable_image(p2["imagen"], p2["nombre"], f"img_p2_{i+1}", width=110)
+                # Contenedor único para aplicar estilo de imagen de fondo al botón principal
+                st.markdown(f'<div class="product-column" id="prod-col-{i+1}">', unsafe_allow_html=True)
                 
-                # 2. Descripción del Producto, su Valor y Hoy Vendido
-                st.markdown(f"**{icono_p2} {p2['nombre']}**")
-                st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p2['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 8px;'>• Hoy: {cant2}</span></p>", unsafe_allow_html=True)
+                b64_img2 = get_image_base64(p2["imagen"])
+                st.markdown(f\"\"\"
+                <style>
+                #prod-col-{i+1} div[data-testid="stButton"]:first-of-type button {{
+                    background-image: url(data:image/png;base64,{b64_img2}) !important;
+                    background-size: cover !important;
+                    background-position: center !important;
+                    width: 110px !important;
+                    height: 110px !important;
+                    border-radius: 15px !important;
+                    border: 1px solid #37474F !important;
+                    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5) !important;
+                    color: transparent !important;
+                    overflow: hidden !important;
+                    transition: transform 0.2s, box-shadow 0.2s !important;
+                    display: block !important;
+                    margin: 0 auto 5px auto !important;
+                }}
+                #prod-col-{i+1} div[data-testid="stButton"]:first-of-type button:hover {{
+                    transform: scale(1.05) !important;
+                    box-shadow: 0px 6px 15px rgba(255, 234, 0, 0.4) !important;
+                    border-color: #FFEA00 !important;
+                }}
+                #prod-col-{i+1} div[data-testid="stButton"]:first-of-type button:active {{
+                    transform: scale(0.98) !important;
+                }}
+                #prod-col-{i+1} div[data-testid="stButton"]:first-of-type button * {{
+                    display: none !important;
+                }}
+                </style>
+                \"\"\", unsafe_allow_html=True)
                 
-                # 3. Botón Base (Invisible)
-                label_p2 = f"Registrar {p2['nombre']}"
-                if st.button(label_p2, key=f"btn_sell_caldo_{i+1}"):
+                # El botón nativo de Streamlit, que se convierte visualmente en la imagen interactiva
+                if st.button("", key=f"btn_sell_caldo_{i+1}"):
                     if registrar_movimiento_instantaneo("VENTA", p2["nombre"], p2["precio"]):
                         st.toast(f"🟢 Venta registrada: {p2['nombre']}", icon=icono_p2)
                         st.session_state["reproducir_sonido"] = True
                         st.rerun()
+                
+                # Descripción del Producto, su Valor y Hoy Vendido
+                st.markdown(f"**{icono_p2} {p2['nombre']}**")
+                st.markdown(f"<p style='color: #FFEA00; font-weight: bold; font-size: 13px; margin: 0; padding-bottom: 5px;'>S/. {p2['precio']:.2f} <span style='color: #888888; font-weight: normal; margin-left: 8px;'>• Hoy: {cant2}</span></p>", unsafe_allow_html=True)
                 
                 # Botones de Modificadores (Asociados al Caldo correspondiente)
                 if es_caldo2:
@@ -493,6 +535,8 @@ with tab_ventas:
                                 st.rerun()
                     with col_txt_t2:
                         st.markdown("<span style='font-size: 24px; vertical-align: middle;'>🛍️</span> <span style='font-size: 13px; color: #00FF66; font-weight: bold; vertical-align: middle;'>Táper S/. 1.00</span>", unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
 
     # Lanzador de sonido
     if st.session_state["reproducir_sonido"]:
@@ -517,127 +561,6 @@ with tab_ventas:
         for fecha, detalle, monto in movimientos:
             color_txt = "#00FF66" if "VENTA" in detalle else "#FF0055"
             hora = extraer_hora(fecha)
-            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{detalle}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(monto):.2f} ({hora})</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<!-- {fecha} --><div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{detalle}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(monto):.2f} ({hora})</span></div>", unsafe_allow_html=True)
     else:
         st.info("No hay movimientos registrados hoy.")
-
-
-    # Script JS para ocultar los botones de registro duplicados
-    st.markdown("""
-    <script>
-        const hideButtonsInterval = setInterval(() => {
-            const btns = document.querySelectorAll('button');
-            btns.forEach(btn => {
-                if (btn.innerText.includes('Registrar Caldo sin presa') || 
-                    btn.innerText.includes('Registrar Caldo presa mediana') || 
-                    btn.innerText.includes('Registrar Caldo presa entera') || 
-                    btn.innerText.includes('Registrar Gaseosa personal') || 
-                    btn.innerText.includes('Registrar Gaseosa de 1 Litro') || 
-                    btn.innerText.includes('Registrar Agua mineral')) {
-                    
-                    const parent = btn.closest('div[data-testid="stButton"]');
-                    if (parent) {
-                        parent.style.display = 'none';
-                    }
-                }
-            });
-        }, 50);
-        setTimeout(() => clearInterval(hideButtonsInterval), 3000);
-    </script>
-    """, unsafe_allow_html=True)
-
-with tab_gastos:
-    st.markdown("<h4 style='color: #CFD8DC;'>Anotar un Gasto de Caja:</h4>", unsafe_allow_html=True)
-    
-    # Formulario inteligente con autolimpieza nativa segura y campo vaciado por defecto (value=None)
-    with st.form("formulario_gastos_sumac", clear_on_submit=True):
-        desc_gasto = st.text_input("¿En qué se gastó? (Ej: Gas, Gallinas, Verduras)")
-        monto_gasto = st.number_input("Monto gastado (S/.)", min_value=0.0, step=1.0, value=None)
-        
-        btn_registrar = st.form_submit_button("💾 Registrar Gasto en Caja")
-        
-        if btn_registrar:
-            if desc_gasto and monto_gasto is not None and monto_gasto > 0:
-                if registrar_movimiento_instantaneo("GASTO", desc_gasto, monto_gasto):
-                    st.toast(f"🔴 Gasto registrado: {desc_gasto} (S/. {monto_gasto:.2f})", icon="💸")
-                    st.session_state["reproducir_sonido"] = True
-                    st.rerun()
-            else:
-                st.error("Por favor ingresa una descripción and un monto válido.")
-
-    st.markdown("<br><h5 style='color: #CFD8DC;'>📋 Gastos de hoy registrados:</h5>", unsafe_allow_html=True)
-    if datos["compras"]:
-        gastos_hoy = datos["compras"]
-        try:
-            # Ordenar los gastos de más reciente a más antiguo
-            gastos_hoy_sorted = sorted(gastos_hoy, key=lambda x: x["fecha"], reverse=True)
-        except:
-            gastos_hoy_sorted = gastos_hoy
-            
-        for g in gastos_hoy_sorted:
-            fecha = g.get("fecha", "")
-            hora = extraer_hora(fecha)
-            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #FF0055;'><span style='color: #FFEA00; font-weight: bold;'>• {g['detalle']}</span><span style='color: #FF0055; font-weight: bold;'>S/. {g['monto']:.2f} ({hora})</span></div>", unsafe_allow_html=True)
-    else:
-        st.info("No hay gastos registrados hoy.")
-
-with tab_caja:
-    st.markdown("<h4 style='text-align: center; color: #CFD8DC;'>💼 Finanzas del Turno</h4>", unsafe_allow_html=True)
-    
-    # Sincronización Manual segura
-    col_v1, col_v2 = st.columns(2)
-    with col_v1:
-        st.markdown("<span style='font-size: 13px; color: #CFD8DC;'>Sincronizar las ventas de todos los mozos:</span>", unsafe_allow_html=True)
-    with col_v2:
-        if st.button("🔄 Actualizar", key="btn_sync_caja"):
-            with st.spinner("Conectando..."):
-                st.session_state["datos_cache"] = cargar_datos_cloud()
-                st.rerun()
-
-    total_v = sum(v["total"] for v in datos["ventas"])
-    total_g = sum(c["monto"] for c in datos["compras"])
-    egresos = total_g
-    ganancia = total_v - egresos
-    
-    col_v, col_g = st.columns(2)
-    with col_v:
-        st.markdown(f"<div class='metric-box'>Ingresos<br><span class='metric-val-green'>S/. {total_v:.2f}</span></div>", unsafe_allow_html=True)
-    with col_g:
-        st.markdown(f"<div class='metric-box'>Gastos<br><span class='metric-val-red'>S/. {egresos:.2f}</span></div>", unsafe_allow_html=True)
-        
-    st.markdown(f"<div class='metric-box' style='background: #252525;'>GANANCIA NETA<br><span class='metric-val-blue' style='color: {'#00FF66' if ganancia >= 0 else '#FF0055'}'>S/. {ganancia:.2f}</span></div>", unsafe_allow_html=True)
-
-    if total_v > 0:
-        st.markdown("<br><h5 style='text-align: center; color: #CFD8DC;'>📊 Distribución Financiera:</h5>", unsafe_allow_html=True)
-        porcentaje_gasto = (egresos / total_v)
-        porcentaje_rentabilidad = max(0.0, 1.0 - porcentaje_gasto)
-        
-        st.write(f"🟢 Ganancia Neta ({porcentaje_rentabilidad*100:.0f}%)")
-        st.progress(porcentaje_rentabilidad)
-        
-        st.write(f"🔴 Gastos de Operación ({porcentaje_gasto*100:.0f}%)")
-        st.progress(porcentaje_gasto)
-    else:
-        st.info("Registra ventas para ver el análisis de rentabilidad.")
-
-    # --- SECCIÓN SEGURO DE REINICIO DE CAJA ---
-    st.markdown("---")
-    st.markdown("<h5 style='color: #FF0055;'>🧹 Zona de Seguridad</h5>", unsafe_allow_html=True)
-    
-    # Etiqueta limpia que solo dice "Contraseña:" para máxima discreción
-    clave_caja = st.text_input("Contraseña:", type="password", key="clave_caja_web")
-    if clave_caja == "1992":
-        if st.button("⚠️ CONFIRMAR REINICIO COMPLETO DE CAJA", key="btn_reiniciar_caja_web"):
-            api_url = st.session_state["api_url"]
-            with st.spinner("Borrando base de datos central..."):
-                try:
-                    payload = {"action": "reiniciar"}
-                    response = requests.post(api_url, json=payload, timeout=5)
-                    if response.status_code == 200:
-                        st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
-                        st.success("¡Base de datos en Google Sheets borrada con éxito!")
-                        st.rerun()
-                    else:
-                        st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
-                except Exception as e:
-                    st.error(f"Error de conexión con el servidor: {e}")
