@@ -925,4 +925,3 @@ with tab_caja:
                         st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
                 except Exception as e:
                     st.error(f"Error de conexión con el servidor: {e}")
-,TargetFile:/workspace/scratch/app.py}
