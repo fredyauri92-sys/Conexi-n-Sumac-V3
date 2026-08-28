@@ -605,11 +605,9 @@ with tab_ventas:
             if not b64_img:
                 b64_img = get_image_base64(p["imagen"])
                 
-            # Anchor to target the button style
-            st.markdown(f'<div id="target-anchor-{i}"></div>', unsafe_allow_html=True)
-            
-            # CSS para alinear el botón de la imagen COMPLETAMENTE A LA IZQUIERDA (pegado a la recta/línea verde)
+            # Anchor and CSS unificado para que funcione el selector div.element-container:has(#target-anchor) + div.element-container
             st.markdown(f"""
+            <div id="target-anchor-{i}"></div>
             <style>
             /* Alinear a la izquierda el contenedor del botón de imagen de Streamlit */
             div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] {{
