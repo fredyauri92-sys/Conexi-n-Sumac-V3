@@ -248,11 +248,11 @@ def extraer_hora(fecha_str):
     if "T" in fecha_str:
         parts = fecha_str.split("T")
         if len(parts) > 1:
-            return parts[1][:5]
+            return parts[:5]
     if " " in fecha_str:
         parts = fecha_str.split()
         if len(parts) > 1:
-            return parts[1][:5]
+            return parts[:5]
     if ":" in fecha_str:
         import re
         match = re.search(r'(\d{1,2}:\d{2})', fecha_str)
@@ -284,9 +284,9 @@ with tab_ventas:
             taper_activo1 = False
             
             if es_caldo1:
-                # Helios: Toggles súper intuitivos de Sí/No. Eliminamos el contador +/- con signo menos.
-                huevo_activo1 = st.toggle("🥚 Huevo Extra (+S/. 1)", key=f"huevo_toggle_{i}")
-                taper_activo1 = st.toggle("🛍️ Llevar en Táper (+S/. 1)", key=f"taper_toggle_{i}")
+                # Helios: Toggles ultra-simplificados con solo el signo "+" y el emoji para máxima velocidad táctil
+                huevo_activo1 = st.toggle("+ 🥚", key=f"huevo_toggle_{i}")
+                taper_activo1 = st.toggle("+ 🛍️", key=f"taper_toggle_{i}")
                 
             # Cálculo de precio dinámico
             precio_final1 = p1["precio"] + (1.0 if huevo_activo1 else 0) + (1.0 if taper_activo1 else 0)
@@ -315,7 +315,7 @@ with tab_ventas:
                 
                 if registrar_movimiento_instantaneo("VENTA", nombre_reg1, precio_final1):
                     st.toast(f"🟢 Venta registrada: {nombre_reg1}", icon="🍲")
-                    # Helios: Reseteo instantáneo y automático tras presionar el botón de venta
+                    # Reseteo instantáneo y automático tras presionar el botón de venta
                     if es_caldo1:
                         st.session_state[f"huevo_toggle_{i}"] = False
                         st.session_state[f"taper_toggle_{i}"] = False
@@ -335,8 +335,9 @@ with tab_ventas:
                 taper_activo2 = False
                 
                 if es_caldo2:
-                    huevo_activo2 = st.toggle("🥚 Huevo Extra (+S/. 1)", key=f"huevo_toggle_{i+1}")
-                    taper_activo2 = st.toggle("🛍️ Llevar en Táper (+S/. 1)", key=f"taper_toggle_{i+1}")
+                    # Helios: Toggles ultra-simplificados con solo el signo "+" y el emoji
+                    huevo_activo2 = st.toggle("+ 🥚", key=f"huevo_toggle_{i+1}")
+                    taper_activo2 = st.toggle("+ 🛍️", key=f"taper_toggle_{i+1}")
                     
                 precio_final2 = p2["precio"] + (1.0 if huevo_activo2 else 0) + (1.0 if taper_activo2 else 0)
                 
