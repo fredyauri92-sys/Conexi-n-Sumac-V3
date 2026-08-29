@@ -325,7 +325,7 @@ def obtener_datetime_sort(fecha_str):
         pass
     return datetime.min
 
-# --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE Y PRE-PARSEO DE FEAS ---
+# --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE Y PRE-PARSEO DE FECHAS ---
 def cargar_datos_cloud():
     api_url = st.session_state["api_url"]
     try:
@@ -334,28 +334,38 @@ def cargar_datos_cloud():
             st.session_state["conexion_fallida"] = False
             rows = response.json()
             datos_formateados = {"ventas": [], "compras": [], "planilla": []}
-            for row in rows:
-                fecha = row.get("fecha", "")
-                type_row = row.get("tipo", "")
-                detalle = row.get("detalle", "")
-                monto = float(row.get("monto", 0))
-                parsed_dt = obtener_datetime_sort(fecha)
-                
-                if type_row == "VENTA":
-                    datos_formateados["ventas"].append({
-                        "fecha": fecha,
-                        "producto": detalle,
-                        "total": monto,
-                        "dt": parsed_dt
-                    })
-                elif type_row == "GASTO":
-                    datos_formateados["compras"].append({
-                        "fecha": fecha,
-                        "detalle": detalle,
-                        "monto": monto,
-                        "dt": parsed_dt
-                    })
-            return datos_formateados
+            if isinstance(rows, list):
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    fecha = row.get("fecha", "")
+                    type_row = row.get("tipo", "")
+                    detalle = row.get("detalle", "")
+                    
+                    # Conversión defensiva de monto
+                    monto_raw = row.get("monto", 0)
+                    try:
+                        monto = float(monto_raw) if monto_raw not in ["", None] else 0.0
+                    except (ValueError, TypeError):
+                        monto = 0.0
+                        
+                    parsed_dt = obtener_datetime_sort(fecha)
+                    
+                    if type_row == "VENTA":
+                        datos_formateados["ventas"].append({
+                            "fecha": str(fecha),
+                            "producto": str(detalle),
+                            "total": monto,
+                            "dt": parsed_dt
+                        })
+                    elif type_row == "GASTO":
+                        datos_formateados["compras"].append({
+                            "fecha": str(fecha),
+                            "detalle": str(detalle),
+                            "monto": monto,
+                            "dt": parsed_dt
+                        })
+                return datos_formateados
     except Exception as e:
         pass
     
@@ -363,27 +373,13 @@ def cargar_datos_cloud():
     return {"ventas": [], "compras": [], "planilla": []}
 
 
-# Función robusta para hacer POST a Google Apps Script Web App manejando el desvío 302 a GET de Python requests
-def post_google_sheets(api_url, payload, timeout=15):
-    try:
-        # Hacemos el POST inicial desactivando la redirección automática para evitar que requests cambie el método a GET
-        response = requests.post(api_url, json=payload, timeout=timeout, allow_redirects=False)
-        # Si Google nos devuelve una redirección (302 Found es el estándar de Apps Script)
-        if response.status_code in [301, 302, 303, 307, 308] and 'Location' in response.headers:
-            redirect_url = response.headers['Location']
-            # Re-enviamos el POST de forma explícita al URL de destino final de Google User Content
-            response = requests.post(redirect_url, json=payload, timeout=timeout)
-        return response
-    except Exception as e:
-        return None
-
 def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
     # Obtener la hora actual de Sicuani (Perú) que es UTC-5
     ahora = datetime.now(timezone.utc) - timedelta(hours=5)
     fecha_hoy = ahora.strftime("%Y-%m-%d %H:%M:%S")
     
-    # 1. Registrar LOCALMENTE en la memoria (caché) para actualizar la pantalla en MILISEGUNDOS
+    # 1. Registrar LOCALMENTE en la memoria (caché) para actualizar la pantalla de inmediato
     if tipo == "VENTA":
         st.session_state["datos_cache"]["ventas"].append({
             "fecha": fecha_hoy,
@@ -399,7 +395,7 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
             "dt": ahora
         })
         
-    # 2. Enviar a Google Sheets de forma SÍNCRONA usando el conector blindado
+    # 2. Enviar a Google Sheets de forma SÍNCRONA directa (requests sigue desvíos automáticamente)
     payload = {
         "action": "registrar",
         "fecha": fecha_hoy,
@@ -409,9 +405,8 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     }
     
     try:
-        # Hacemos el POST de forma directa y síncrona con redirección controlada
-        response = post_google_sheets(api_url, payload, timeout=15)
-        if response and response.status_code == 200:
+        response = requests.post(api_url, json=payload, timeout=15)
+        if response and response.status_code in :
             st.session_state["conexion_fallida"] = False
             return True
     except Exception as e:
@@ -859,8 +854,8 @@ with tab_caja:
             with st.spinner("Borrando base de datos central..."):
                 try:
                     payload = {"action": "reiniciar"}
-                    response = post_google_sheets(api_url, payload, timeout=15)
-                    if response and response.status_code == 200:
+                    response = requests.post(api_url, json=payload, timeout=15)
+                    if response.status_code == 200:
                         st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
                         st.success("¡Base de datos en Google Sheets borrada con éxito!")
                         st.rerun()
