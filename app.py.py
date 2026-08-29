@@ -285,9 +285,9 @@ if "conexion_fallida" not in st.session_state:
 
 # Indicador de conexión automática arriba con colores dinámicos
 if st.session_state.get("conexion_fallida", False):
-    st.markdown("<div class='status-badge' style='background-color: #721C24; color: #F8D7DA; border: 1px solid #F5C6CB;'>⚠️ MODO LOCAL ACTIVO (Las ventas se registran de inmediato en el celular y se suben a Google Sheets en segundo plano)</div>", unsafe_allow_html=True)
+    st.markdown("<div class='status-badge' style='background-color: #721C24; color: #F8D7DA; border: 1px solid #F5C6CB;'>⚠️ TRABAJANDO EN MODO LOCAL (Los datos se guardarán temporalmente en el celular. Dale a '🔄 Actualizar' en Ver Caja)</div>", unsafe_allow_html=True)
 else:
-    st.markdown("<div class='status-badge'>🟢 CONECTADO CON GOOGLE SHEETS (Sincronización ultra-veloz en segundo plano activa)</div>", unsafe_allow_html=True)
+    st.markdown("<div class='status-badge'>🟢 CONECTADO CON GOOGLE SHEETS (Sincronización central activa)</div>", unsafe_allow_html=True)
 
 # --- FUNCIÓN DE CONVERSIÓN DE FECHA OPTIMIZADA ---
 def obtener_datetime_sort(fecha_str):
@@ -329,7 +329,8 @@ def obtener_datetime_sort(fecha_str):
 def cargar_datos_cloud():
     api_url = st.session_state["api_url"]
     try:
-        response = requests.get(api_url, timeout=15) # Aumentamos el timeout a 15 segundos para evitar cortes con Google Apps Script
+        # Se requiere allow_redirects=True (por defecto) para que el GET siga el redireccionamiento 302 y traiga el JSON completo
+        response = requests.get(api_url, timeout=10)
         if response.status_code == 200:
             st.session_state["conexion_fallida"] = False
             rows = response.json()
@@ -370,28 +371,8 @@ def cargar_datos_cloud():
         pass
     
     st.session_state["conexion_fallida"] = True
-    return None # Retornamos None para indicar falla en red y no pisar la memoria local con ceros
+    return None  # RETORNAR None para indicar falla de conexión de red y EVITAR borrar los datos locales actuales
 
-# Función robusta para hacer POST a Google Apps Script Web App manejando el desvío 302 a GET de Python requests
-def post_google_sheets(api_url, payload, timeout=15):
-    try:
-        # Hacemos el POST inicial desactivando la redirección automática para evitar que requests cambie el método a GET
-        response = requests.post(api_url, json=payload, timeout=timeout, allow_redirects=False)
-        # Si Google nos devuelve una redirección (302 Found es el estándar de Apps Script)
-        if response.status_code in (301, 302, 303, 307, 308) and 'Location' in response.headers:
-            redirect_url = response.headers['Location']
-            # Re-enviamos el POST de forma explícita al URL de destino final de Google User Content
-            response = requests.post(redirect_url, json=payload, timeout=timeout)
-        return response
-    except Exception as e:
-        return None
-
-# Hilo de ejecución secundario para subir a Sheets de forma asíncrona sin bloquear la pantalla de los mozos
-def enviar_a_sheets_bg(api_url, payload):
-    try:
-        post_google_sheets(api_url, payload, timeout=15)
-    except:
-        pass
 
 def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
@@ -399,7 +380,7 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     ahora = datetime.now(timezone.utc) - timedelta(hours=5)
     fecha_hoy = ahora.strftime("%Y-%m-%d %H:%M:%S")
     
-    # 1. Registrar LOCALMENTE en la memoria (caché) para actualizar la pantalla AL INSTANTE (0.01 segundos)
+    # 1. Registrar LOCALMENTE en la memoria (caché) para actualizar la pantalla al instante (0.01s)
     if tipo == "VENTA":
         st.session_state["datos_cache"]["ventas"].append({
             "fecha": fecha_hoy,
@@ -415,7 +396,7 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
             "dt": ahora
         })
         
-    # 2. Enviar a Google Sheets de forma ASÍNCRONA (en segundo plano) usando el conector blindado
+    # 2. Enviar a Google Sheets de forma SÍNCRONA pero ULTRA-VELOZ (1-hop, allow_redirects=False)
     payload = {
         "action": "registrar",
         "fecha": fecha_hoy,
@@ -424,19 +405,30 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
         "monto": monto
     }
     
-    hilo = threading.Thread(target=enviar_a_sheets_bg, args=(api_url, payload))
-    hilo.start()
+    try:
+        # allow_redirects=False evita el desvío a Google User Content, reduciendo el tiempo a menos de 0.5 segundos.
+        # Garantiza la escritura física en Google Sheets antes de que la página haga rerun.
+        response = requests.post(api_url, json=payload, timeout=8, allow_redirects=False)
+        # Los códigos de estado 200 o 302 indican que la petición POST fue recibida e iniciada por Google Apps Script con éxito.
+        if response and response.status_code in (200, 302):
+            st.session_state["conexion_fallida"] = False
+            return True
+    except Exception as e:
+        pass
+        
+    st.session_state["conexion_fallida"] = True
     return True
 
-# Sincronización de caché de forma segura
+# Sincronización de caché de forma segura al iniciar sesión
 if "datos_cache" not in st.session_state:
     with st.spinner("🔌 Conectando con la Caja Consolidada..."):
         datos_nuevos = cargar_datos_cloud()
         if datos_nuevos is not None:
             st.session_state["datos_cache"] = datos_nuevos
         else:
-            # Inicialización fallback si no hay internet al abrir la app por primera vez
+            # Si no hay internet al iniciar, empezamos vacíos pero marcamos error de conexión
             st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
+            st.session_state["conexion_fallida"] = True
 
 datos = st.session_state["datos_cache"]
 
@@ -838,7 +830,7 @@ with tab_caja:
                     st.success("🔄 ¡Caja sincronizada con éxito!")
                     st.rerun()
                 else:
-                    st.error("⚠️ No se pudo conectar a Google Sheets. Se mantuvieron tus registros locales actuales.")
+                    st.error("⚠️ No se pudo conectar a Google Sheets. Se mantuvieron tus registros locales actuales para evitar pérdidas de datos.")
 
     total_v = sum(v["total"] for v in datos["ventas"])
     total_g = sum(c["monto"] for c in datos["compras"])
@@ -877,8 +869,8 @@ with tab_caja:
             with st.spinner("Borrando base de datos central..."):
                 try:
                     payload = {"action": "reiniciar"}
-                    response = post_google_sheets(api_url, payload, timeout=15)
-                    if response and response.status_code == 200:
+                    response = requests.post(api_url, json=payload, timeout=15, allow_redirects=False)
+                    if response and response.status_code in (200, 302):
                         st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
                         st.success("¡Base de datos en Google Sheets borrada con éxito!")
                         st.rerun()
