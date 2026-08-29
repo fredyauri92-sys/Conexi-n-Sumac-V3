@@ -295,7 +295,7 @@ def obtener_datetime_sort(fecha_str):
         return datetime.min
     try:
         clean_str = fecha_str.replace("T", " ").replace("Z", "").strip()
-        clean_str = re.sub(r"([+-]\\d{2}:?\\\\d{2})\\$\", \"\", clean_str)
+        clean_str = re.sub(r"([+-]\d{2}:?\d{2})$", "", clean_str)
         
         formatos = [
             "%Y-%m-%d %H:%M:%S",
@@ -315,7 +315,7 @@ def obtener_datetime_sort(fecha_str):
             except ValueError:
                 pass
                 
-        numbers = re.findall(r"\\d+", clean_str)
+        numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
             if len(numbers) == 4:
                 return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
@@ -595,7 +595,7 @@ def extraer_hora(fecha_str):
         return "--:--"
     try:
         clean_str = fecha_str.replace("T", " ").replace("Z", "")
-        clean_str = re.sub(r"([+-]\\d{2}:?\\\\d{2})$", "", clean_str)
+        clean_str = re.sub(r"([+-]\d{2}:?\d{2})$", "", clean_str)
         
         if len(clean_str) > 16:
             dt = datetime.strptime(clean_str[:19], "%Y-%m-%d %H:%M:%S")
@@ -613,7 +613,7 @@ def extraer_hora(fecha_str):
         if is_utc:
             dt = dt - timedelta(hours=5)
     except Exception:
-        match = re.search(r"(\\d{1,2}):(\\d{2})", fecha_str)
+        match = re.search(r"(\d{1,2}):(\d{2})", fecha_str)
         if match:
             hh = int(match.group(1))
             mm = match.group(2)
@@ -714,7 +714,7 @@ with tab_ventas:
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 
                 # --- MODIFICADOR HUEVO EXTRA (🥚 S/.1.0) ---
-                st.markdown(f'<div id="egg-anchor-{i} container"></div>', unsafe_allow_html=True)
+                st.markdown(f'<div id="egg-anchor-{i}"></div>', unsafe_allow_html=True)
                 if st.button("🥚 S/.1.0", key=f"btn_h_indep_{i}"):
                     nombre_huevo = f"{p['nombre']} (+1 huevo)"
                     if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
@@ -725,7 +725,7 @@ with tab_ventas:
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 
                 # --- MODIFICADOR TÁPER (🥃 S/.1.0) ---
-                st.markdown(f'<div id="taper-anchor-{i} container"></div>', unsafe_allow_html=True)
+                st.markdown(f'<div id="taper-anchor-{i}"></div>', unsafe_allow_html=True)
                 if st.button("🥃 S/.1.0", key=f"btn_t_indep_{i}"):
                     nombre_taper = f"{p['nombre']} (en táper)"
                     if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
