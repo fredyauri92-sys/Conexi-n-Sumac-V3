@@ -339,9 +339,9 @@ def obtener_datetime_sort(fecha_str):
         numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
             if len(numbers) == 4:
-                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
             else:
-                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
     except Exception:
         pass
     return datetime.min
@@ -404,7 +404,7 @@ def cargar_datos_cloud():
         pass
     
     st.session_state["conexion_fallida"] = True
-    return None  # Retornar None para evitar pisar o borrar datos locales
+    return None  # Retornar None para evitar pisar o borrar datos locales en caso de fallas de red
 
 
 def sincronizar_offline():
@@ -456,7 +456,7 @@ def sincronizar_offline():
             if firma not in firmas_nube_ventas:
                 ventas_fusionadas.append(v)
                 
-    firmas_nube_compras = {(str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0))) for c in compras_fusionadas}
+    firmas_nube_compras = {(str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0))) for cit in compras_fusionadas}
     for c in datos_cache.get("compras", []):
         if not c.get("sincronizado", False):
             firma = (str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0)))
@@ -717,7 +717,7 @@ def extraer_hora(fecha_str):
         return "--:--"
     try:
         clean_str = fecha_str.replace("T", " ").replace("Z", "")
-        clean_str = re.sub(r"([+-]\d{2}:?\d{2})$", "", clean_str)
+        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})$", "", clean_str)
         
         if len(clean_str) > 16:
             dt = datetime.strptime(clean_str[:19], "%Y-%m-%d %H:%M:%S")
@@ -869,9 +869,11 @@ with tab_ventas:
     
     movimientos = []
     for v in datos["ventas"]:
-        movimientos.append((v.get("dt", datetime.min), v["fecha"], f"🟢 VENTA - {v['producto']}", v["total"]))
+        sinc_status = " ⚡" if not v.get("sincronizado", True) else ""
+        movimientos.append((v.get("dt", datetime.min), v["fecha"], f"🟢 VENTA - {v['producto']}{sinc_status}", v["total"]))
     for c in datos["compras"]:
-        movimientos.append((c.get("dt", datetime.min), c["fecha"], f"🔴 GASTO - {c['detalle']}", -c["monto"]))
+        sinc_status = " ⚡" if not c.get("sincronizado", True) else ""
+        movimientos.append((c.get("dt", datetime.min), c["fecha"], f"🔴 GASTO - {c['detalle']}{sinc_status}", -c["monto"]))
         
     if movimientos:
         try:
@@ -980,4 +982,3 @@ with tab_caja:
                         st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos o conexión.")
                 except Exception as e:
                     st.error(f"Error de conexión con el servidor: {e}")
-,TargetFile:/workspace/scratch/app.py}
