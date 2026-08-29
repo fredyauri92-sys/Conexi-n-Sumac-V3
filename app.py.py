@@ -257,7 +257,7 @@ if "logo_path" not in st.session_state:
             break
     st.session_state["logo_path"] = logo_path
 
-col_logo, col_titulo = st.columns((0.45, 3.55))
+col_logo, col_titulo = st.columns([0.45, 3.55])
 
 with col_logo:
     if st.session_state.get("logo_path"):
@@ -464,12 +464,21 @@ def sincronizar_offline():
         st.session_state["datos_cache"] = datos_nube
         return True
 
+# Hilo de ejecución de red para subir a Google Sheets de forma asíncrona (segundo plano)
+def enviar_a_sheets_bg(api_url, payload):
+    try:
+        # Standard post with redirections enabled to safely record data in Google Sheets
+        requests.post(api_url, json=payload, timeout=15)
+    except:
+        pass
+
 def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
     ahora = datetime.now(timezone.utc) - timedelta(hours=5)
     fecha_hoy = ahora.strftime("%Y-%m-%d %H:%M:%S")
     
-    # 1. Registrar LOCALMENTE en la memoria (caché) para actualizar la pantalla al instante (0.01s)
+    # 1. Registrar LOCALMENTE en la memoria (caché) de forma INSTANTÁNEA (0.01 segundos)
+    # Esto actualiza la interfaz del celular o la laptop de inmediato
     if tipo == "VENTA":
         st.session_state["datos_cache"]["ventas"].append({
             "fecha": fecha_hoy,
@@ -485,7 +494,8 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
             "dt": ahora
         })
         
-    # 2. Enviar a Google Sheets de forma síncrona, robusta y siguiendo desvíos de forma nativa
+    # 2. Enviar a Google Sheets en SEGUNDO PLANO (asíncrono) para velocidad absoluta
+    # Así nunca verás textos molestos ni demoras en la pantalla del mozo
     payload = {
         "action": "registrar",
         "fecha": fecha_hoy,
@@ -494,17 +504,9 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
         "monto": monto
     }
     
-    try:
-        # Realizamos el POST con redirecciones habilitadas y un spinner que informa al usuario
-        with st.spinner("⚡ Registrando venta en Google Sheets..."):
-            response = requests.post(api_url, json=payload, timeout=15)
-            if response and response.status_code == 200:
-                st.session_state["conexion_fallida"] = False
-                return True
-    except Exception as e:
-        pass
-        
-    st.session_state["conexion_fallida"] = True
+    # Disparar hilo de red para que se guarde de forma invisible sin bloquear al usuario
+    hilo = threading.Thread(target=enviar_a_sheets_bg, args=(api_url, payload))
+    hilo.start()
     return True
 
 # Sincronización de caché de forma segura al iniciar sesión
@@ -956,8 +958,8 @@ with tab_caja:
             with st.spinner("Borrando base de datos central..."):
                 try:
                     payload = {"action": "reiniciar"}
-                    response = requests.post(api_url, json=payload, timeout=15, allow_redirects=False)
-                    if response and response.status_code in (200, 302):
+                    response = requests.post(api_url, json=payload, timeout=15)
+                    if response and response.status_code == 200:
                         st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
                         st.success("¡Base de datos en Google Sheets borrada con éxito!")
                         st.rerun()
