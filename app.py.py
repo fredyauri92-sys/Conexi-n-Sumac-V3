@@ -245,7 +245,7 @@ def reproducir_sonido(tipo):
     """
     st.components.v1.html(js_sonido, height=0, width=0)
 
-# --- ENCABEZADO INTEGRADO PREMIUM (LOGO EN CACHÉ DE SESIÓN PARA MÁXIMA VELOCIDAD) ---
+# --- ENCABEZADO INTEGRADO PREMIUM ---
 if "logo_path" not in st.session_state:
     logo_path = None
     for l in ["yauri_cloud_logo_final.png", "yauri_cloud_logo_rectangular.png", "yauri_cloud_logo_futuristic_1.png"]:
@@ -349,13 +349,12 @@ def obtener_datetime_sort(fecha_str):
 # --- FUNCIÓN DE ENVÍO DIRECTO MANEJANDO REDIRECCIONAMIENTOS 302 DE GOOGLE ---
 def post_google_sheets(api_url, payload, timeout=15):
     try:
-        # Desactivamos redirección automática para capturar la cabecera 302 Estándar de Apps Script
+        # Desactivamos redirección automática para máxima velocidad (el registro ocurre antes del redireccionamiento)
         response = requests.post(api_url, json=payload, timeout=timeout, allow_redirects=False)
-        if response.status_code in (301, 302, 303, 307, 308) and 'Location' in response.headers:
-            redirect_url = response.headers['Location']
-            # Re-enviamos el POST de forma explícita con el payload al host de destino de Google User Content
-            response = requests.post(redirect_url, json=payload, timeout=timeout)
-        return response
+        # Los códigos 200 (éxito directo) o 302 (redireccionamiento estándar de Apps Script) indican que Google recibió y guardó los datos
+        if response and response.status_code in (200, 301, 302, 303, 307, 308):
+            return response
+        return None
     except Exception as e:
         return None
 
@@ -422,7 +421,7 @@ def sincronizar_offline():
                 "monto": v["total"]
             }
             response = post_google_sheets(api_url, payload, timeout=12)
-            if response and response.status_code == 200:
+            if response is not None:
                 v["sincronizado"] = True
                 
     # 2. Subir gastos locales pendientes de sincronización
@@ -436,7 +435,7 @@ def sincronizar_offline():
                 "monto": c["monto"]
             }
             response = post_google_sheets(api_url, payload, timeout=12)
-            if response and response.status_code == 200:
+            if response is not None:
                 c["sincronizado"] = True
                 
     # 3. Descargar datos frescos de la nube
@@ -456,7 +455,7 @@ def sincronizar_offline():
             if firma not in firmas_nube_ventas:
                 ventas_fusionadas.append(v)
                 
-    firmas_nube_compras = {(str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0))) for cit in compras_fusionadas}
+    firmas_nube_compras = {(str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0))) for c in compras_fusionadas}
     for c in datos_cache.get("compras", []):
         if not c.get("sincronizado", False):
             firma = (str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0)))
@@ -475,7 +474,7 @@ def sincronizar_offline():
 def enviar_a_sheets_bg(api_url, payload, item_id, tipo_mov):
     try:
         response = post_google_sheets(api_url, payload, timeout=15)
-        if response and response.status_code == 200:
+        if response is not None:
             # Marcar localmente como sincronizado
             if "datos_cache" in st.session_state:
                 lista = st.session_state["datos_cache"]["ventas"] if tipo_mov == "VENTA" else st.session_state["datos_cache"]["compras"]
@@ -493,7 +492,6 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     item_id = str(time.time_ns())
     
     # 1. Registrar LOCALMENTE en la memoria (caché) de forma INSTANTÁNEA (0.01 segundos)
-    # Esto actualiza la pantalla del mozo de inmediato con el chaching sonoro
     item_nuevo = {
         "id": item_id,
         "fecha": fecha_hoy,
@@ -529,7 +527,6 @@ if "datos_cache" not in st.session_state:
         if datos_nuevos is not None:
             st.session_state["datos_cache"] = datos_nuevos
         else:
-            # Si no hay internet al iniciar, empezamos vacíos pero marcamos error de conexión
             st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
             st.session_state["conexion_fallida"] = True
 
@@ -567,7 +564,7 @@ def contar_vendidos_hoy(nombre_base):
             total += 1
     return total
 
-# --- FUNCIÓN SUPER ROBUSTA Y OPTIMIZADA PARA OBTENER BASE64 DE IMAGEN EN CUALQUIER ENTORNO ---
+# --- FUNCIÓN SUPER ROBUSTA Y OPTIMIZADA PARA OBTENER BASE64 DE IMAGEN ---
 @st.cache_data
 def get_image_base64(img_path):
     import base64
@@ -626,7 +623,7 @@ def get_image_base64(img_path):
     return "" 
 
 
-# --- ESTADO INICIAL DEL SPLASH SCREEN (CONFIGURADO A 3 SEGUNDOS EXACTOS) ---
+# --- ESTADO INICIAL DEL SPLASH SCREEN (3 SEGUNDOS) ---
 if "splash_done" not in st.session_state:
     st.session_state["splash_done"] = False
 
@@ -691,7 +688,7 @@ def render_splash():
 if not st.session_state["splash_done"]:
     render_splash()
     
-    # Pre-cache de imágenes base64 para acelerar al máximo el renderizado (Cero retraso en clics)
+    # Pre-cache de imágenes base64 para acelerar al máximo el renderizado
     if "imagenes_base64" not in st.session_state:
         st.session_state["imagenes_base64"] = {}
     for p in PRODUCTOS_INFO:
@@ -699,7 +696,6 @@ if not st.session_state["splash_done"]:
         if img_n not in st.session_state["imagenes_base64"]:
             st.session_state["imagenes_base64"][img_n] = get_image_base64(img_n)
             
-    # Duración de 3 segundos reales solicitados por el usuario
     time.sleep(3.0)
     st.session_state["splash_done"] = True
     st.rerun()
@@ -771,11 +767,9 @@ with tab_ventas:
             if not b64_img:
                 b64_img = get_image_base64(p["imagen"])
                 
-            # Anchor and CSS unificado para que funcione el selector div.element-container:has(#target-anchor) + div.element-container
             st.markdown(f"""
             <div id="target-anchor-{i}"></div>
             <style>
-            /* Alinear a la izquierda el contenedor del botón de imagen de Streamlit */
             div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] {{
                 display: flex !important;
                 justify-content: flex-start !important;
@@ -784,7 +778,6 @@ with tab_ventas:
                 margin: 0 !important;
                 padding-left: 5px !important;
             }}
-            /* Estilo del botón de imagen (fijamos margin-left a 5px en lugar de centrarlo) */
             div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button {{
                 background-image: url(data:image/png;base64,{b64_img}) !important;
                 background-color: transparent !important;
@@ -823,7 +816,7 @@ with tab_ventas:
                     st.session_state["reproducir_sonido"] = SOUND_ID_MAP.get(p["nombre"], "venta")
                     st.rerun()
             
-            # Descripción y precio alineados de forma estricta hacia la IZQUIERDA (recta de la línea verde)
+            # Descripción y precio alineados de forma estricta hacia la IZQUIERDA
             st.markdown(f"""
             <div style='text-align: left; margin: 0; width: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding-left: 5px;'>
                 <div style='font-weight: bold; font-size: 13px; line-height: 1.1; margin-top: 4px; color: #FFFFFF;'>{icono} {p['nombre']}</div>
@@ -877,7 +870,7 @@ with tab_ventas:
         
     if movimientos:
         try:
-            movimientos.sort(key=lambda x: x[0], reverse=True)
+            movimientos.sort(key=lambda x: x, reverse=True)
         except Exception:
             movimientos.reverse()
         for dt_obj, fecha, detalle, monto in movimientos:
