@@ -279,7 +279,15 @@ if "api_url" not in st.session_state:
     st.session_state["api_url"] = API_URL_DEFAULT
 
 # Indicador de conexión automática arriba
-st.markdown("<div class='status-badge'>⚡ SISTEMA CONECTOR ACTIVO (REGISTRO INSTANTÁNEO HABILITADO)</div>", unsafe_allow_html=True)
+# Inicializar estado de conexión
+if "conexion_fallida" not in st.session_state:
+    st.session_state["conexion_fallida"] = False
+
+# Indicador de conexión automática arriba con colores dinámicos
+if st.session_state.get("conexion_fallida", False):
+    st.markdown("<div class='status-badge' style='background-color: #721C24; color: #F8D7DA; border: 1px solid #F5C6CB;'>⚠️ TRABAJANDO EN MODO LOCAL (Los datos se guardarán temporalmente en el celular. Dale a '🔄 Actualizar' en Ver Caja)</div>", unsafe_allow_html=True)
+else:
+    st.markdown("<div class='status-badge'>🟢 CONECTADO CON GOOGLE SHEETS (Sincronización central activa)</div>", unsafe_allow_html=True)
 
 # --- FUNCIÓN DE CONVERSIÓN DE FECHA OPTIMIZADA ---
 def obtener_datetime_sort(fecha_str):
@@ -287,7 +295,7 @@ def obtener_datetime_sort(fecha_str):
         return datetime.min
     try:
         clean_str = fecha_str.replace("T", " ").replace("Z", "").strip()
-        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})\$", "", clean_str)
+        clean_str = re.sub(r"([+-]\\d{2}:?\\\\d{2})\\$\", \"\", clean_str)
         
         formatos = [
             "%Y-%m-%d %H:%M:%S",
@@ -307,7 +315,7 @@ def obtener_datetime_sort(fecha_str):
             except ValueError:
                 pass
                 
-        numbers = re.findall(r"\d+", clean_str)
+        numbers = re.findall(r"\\d+", clean_str)
         if len(numbers) >= 5:
             if len(numbers) == 4:
                 return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
@@ -321,8 +329,9 @@ def obtener_datetime_sort(fecha_str):
 def cargar_datos_cloud():
     api_url = st.session_state["api_url"]
     try:
-        response = requests.get(api_url, timeout=6)
+        response = requests.get(api_url, timeout=15) # Aumentamos el timeout a 15 segundos para evitar cortes con Google Apps Script
         if response.status_code == 200:
+            st.session_state["conexion_fallida"] = False
             rows = response.json()
             datos_formateados = {"ventas": [], "compras": [], "planilla": []}
             for row in rows:
@@ -350,30 +359,9 @@ def cargar_datos_cloud():
     except Exception as e:
         pass
     
+    st.session_state["conexion_fallida"] = True
     return {"ventas": [], "compras": [], "planilla": []}
 
-# Hilo de ejecución secundario para subir a Sheets sin congelar la pantalla del mozo
-
-# Función robusta para hacer POST a Google Apps Script Web App manejando el desvío 302 a GET de Python requests
-def post_google_sheets(api_url, payload, timeout=12):
-    try:
-        # Hacemos el POST inicial desactivando la redirección automática para evitar que requests cambie el método a GET
-        response = requests.post(api_url, json=payload, timeout=timeout, allow_redirects=False)
-        # Si Google nos devuelve una redirección (302 Found es el estándar de Apps Script)
-        if response.status_code in [301, 302, 303, 307, 308] and 'Location' in response.headers:
-            redirect_url = response.headers['Location']
-            # Re-enviamos el POST de forma explícita al URL de destino final de Google User Content
-            response = requests.post(redirect_url, json=payload, timeout=timeout)
-        return response
-    except Exception as e:
-        return None
-
-# Hilo de ejecución secundario para subir a Sheets sin congelar la pantalla del mozo
-def enviar_a_sheets_bg(api_url, payload):
-    try:
-        post_google_sheets(api_url, payload, timeout=15)
-    except:
-        pass
 
 def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
@@ -397,7 +385,7 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
             "dt": ahora
         })
         
-    # 2. Disparar el envío a Google Sheets de forma ASÍNCRONA (en segundo plano)
+    # 2. Enviar a Google Sheets de forma SÍNCRONA
     payload = {
         "action": "registrar",
         "fecha": fecha_hoy,
@@ -406,8 +394,16 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
         "monto": monto
     }
     
-    hilo = threading.Thread(target=enviar_a_sheets_bg, args=(api_url, payload))
-    hilo.start()
+    try:
+        # Hacemos el POST de forma directa y síncrona. Python requests sigue la redirección 302 nativa de Google Sheets
+        response = requests.post(api_url, json=payload, timeout=15)
+        if response.status_code == 200:
+            st.session_state["conexion_fallida"] = False
+            return True
+    except Exception as e:
+        pass
+        
+    st.session_state["conexion_fallida"] = True
     return True
 
 # Sincronización de caché
@@ -599,7 +595,7 @@ def extraer_hora(fecha_str):
         return "--:--"
     try:
         clean_str = fecha_str.replace("T", " ").replace("Z", "")
-        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})$", "", clean_str)
+        clean_str = re.sub(r"([+-]\\d{2}:?\\\\d{2})$", "", clean_str)
         
         if len(clean_str) > 16:
             dt = datetime.strptime(clean_str[:19], "%Y-%m-%d %H:%M:%S")
@@ -617,7 +613,7 @@ def extraer_hora(fecha_str):
         if is_utc:
             dt = dt - timedelta(hours=5)
     except Exception:
-        match = re.search(r"(\d{1,2}):(\d{2})", fecha_str)
+        match = re.search(r"(\\d{1,2}):(\\d{2})", fecha_str)
         if match:
             hh = int(match.group(1))
             mm = match.group(2)
@@ -718,7 +714,7 @@ with tab_ventas:
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 
                 # --- MODIFICADOR HUEVO EXTRA (🥚 S/.1.0) ---
-                st.markdown(f'<div id="egg-anchor-{i}"></div>', unsafe_allow_html=True)
+                st.markdown(f'<div id="egg-anchor-{i} container"></div>', unsafe_allow_html=True)
                 if st.button("🥚 S/.1.0", key=f"btn_h_indep_{i}"):
                     nombre_huevo = f"{p['nombre']} (+1 huevo)"
                     if registrar_movimiento_instantaneo("VENTA", nombre_huevo, 1.0):
@@ -729,7 +725,7 @@ with tab_ventas:
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 
                 # --- MODIFICADOR TÁPER (🥃 S/.1.0) ---
-                st.markdown(f'<div id="taper-anchor-{i}"></div>', unsafe_allow_html=True)
+                st.markdown(f'<div id="taper-anchor-{i} container"></div>', unsafe_allow_html=True)
                 if st.button("🥃 S/.1.0", key=f"btn_t_indep_{i}"):
                     nombre_taper = f"{p['nombre']} (en táper)"
                     if registrar_movimiento_instantaneo("VENTA", nombre_taper, 1.0):
@@ -849,12 +845,12 @@ with tab_caja:
             with st.spinner("Borrando base de datos central..."):
                 try:
                     payload = {"action": "reiniciar"}
-                    response = post_google_sheets(api_url, payload, timeout=10)
-                    if response and response.status_code == 200:
+                    response = requests.post(api_url, json=payload, timeout=15)
+                    if response.status_code == 200:
                         st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
                         st.success("¡Base de datos en Google Sheets borrada con éxito!")
                         st.rerun()
                     else:
-                        st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos.")
+                        st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos o conexión.")
                 except Exception as e:
                     st.error(f"Error de conexión con el servidor: {e}")
