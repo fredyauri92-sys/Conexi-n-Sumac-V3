@@ -325,7 +325,7 @@ def obtener_datetime_sort(fecha_str):
         pass
     return datetime.min
 
-# --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE Y PRE-PARSEO DE FECHAS ---
+# --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE Y PRE-PARSEO DE FEAS ---
 def cargar_datos_cloud():
     api_url = st.session_state["api_url"]
     try:
@@ -363,6 +363,20 @@ def cargar_datos_cloud():
     return {"ventas": [], "compras": [], "planilla": []}
 
 
+# Función robusta para hacer POST a Google Apps Script Web App manejando el desvío 302 a GET de Python requests
+def post_google_sheets(api_url, payload, timeout=15):
+    try:
+        # Hacemos el POST inicial desactivando la redirección automática para evitar que requests cambie el método a GET
+        response = requests.post(api_url, json=payload, timeout=timeout, allow_redirects=False)
+        # Si Google nos devuelve una redirección (302 Found es el estándar de Apps Script)
+        if response.status_code in [301, 302, 303, 307, 308] and 'Location' in response.headers:
+            redirect_url = response.headers['Location']
+            # Re-enviamos el POST de forma explícita al URL de destino final de Google User Content
+            response = requests.post(redirect_url, json=payload, timeout=timeout)
+        return response
+    except Exception as e:
+        return None
+
 def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
     # Obtener la hora actual de Sicuani (Perú) que es UTC-5
@@ -385,7 +399,7 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
             "dt": ahora
         })
         
-    # 2. Enviar a Google Sheets de forma SÍNCRONA
+    # 2. Enviar a Google Sheets de forma SÍNCRONA usando el conector blindado
     payload = {
         "action": "registrar",
         "fecha": fecha_hoy,
@@ -395,9 +409,9 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     }
     
     try:
-        # Hacemos el POST de forma directa y síncrona. Python requests sigue la redirección 302 nativa de Google Sheets
-        response = requests.post(api_url, json=payload, timeout=15)
-        if response.status_code == 200:
+        # Hacemos el POST de forma directa y síncrona con redirección controlada
+        response = post_google_sheets(api_url, payload, timeout=15)
+        if response and response.status_code == 200:
             st.session_state["conexion_fallida"] = False
             return True
     except Exception as e:
@@ -845,8 +859,8 @@ with tab_caja:
             with st.spinner("Borrando base de datos central..."):
                 try:
                     payload = {"action": "reiniciar"}
-                    response = requests.post(api_url, json=payload, timeout=15)
-                    if response.status_code == 200:
+                    response = post_google_sheets(api_url, payload, timeout=15)
+                    if response and response.status_code == 200:
                         st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
                         st.success("¡Base de datos en Google Sheets borrada con éxito!")
                         st.rerun()
