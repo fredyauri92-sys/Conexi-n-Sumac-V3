@@ -300,7 +300,6 @@ with st.sidebar:
         st.query_params["api_url"] = API_URL_DEFAULT
         st.rerun()
 
-# Indicador de conexión automática arriba
 # Inicializar estado de conexión
 if "conexion_fallida" not in st.session_state:
     st.session_state["conexion_fallida"] = False
@@ -317,7 +316,7 @@ def obtener_datetime_sort(fecha_str):
         return datetime.min
     try:
         clean_str = fecha_str.replace("T", " ").replace("Z", "").strip()
-        clean_str = re.sub(r"([+-]\d{2}:?\d{2})$", "", clean_str)
+        clean_str = re.sub(r"([+-]\d{2}:?\\d{2})$", "", clean_str)
         
         formatos = [
             "%Y-%m-%d %H:%M:%S",
@@ -340,18 +339,30 @@ def obtener_datetime_sort(fecha_str):
         numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
             if len(numbers) == 4:
-                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
+                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
             else:
-                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
+                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
     except Exception:
         pass
     return datetime.min
+
+# --- FUNCIÓN DE ENVÍO DIRECTO MANEJANDO REDIRECCIONAMIENTOS 302 DE GOOGLE ---
+def post_google_sheets(api_url, payload, timeout=15):
+    try:
+        # Desactivamos redirección automática para capturar la cabecera 302 Estándar de Apps Script
+        response = requests.post(api_url, json=payload, timeout=timeout, allow_redirects=False)
+        if response.status_code in (301, 302, 303, 307, 308) and 'Location' in response.headers:
+            redirect_url = response.headers['Location']
+            # Re-enviamos el POST de forma explícita con el payload al host de destino de Google User Content
+            response = requests.post(redirect_url, json=payload, timeout=timeout)
+        return response
+    except Exception as e:
+        return None
 
 # --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE Y PRE-PARSEO DE FECHAS ---
 def cargar_datos_cloud():
     api_url = st.session_state["api_url"]
     try:
-        # Standard requests.get with timeout and default redirection to safely download
         response = requests.get(api_url, timeout=15)
         if response.status_code == 200:
             st.session_state["conexion_fallida"] = False
@@ -374,54 +385,35 @@ def cargar_datos_cloud():
                         
                     parsed_dt = obtener_datetime_sort(fecha)
                     
+                    item = {
+                        "id": str(time.time_ns() + len(datos_formateados["ventas"]) + len(datos_formateados["compras"])),
+                        "fecha": str(fecha),
+                        "dt": parsed_dt,
+                        "sincronizado": True
+                    }
                     if type_row == "VENTA":
-                        datos_formateados["ventas"].append({
-                            "fecha": str(fecha),
-                            "producto": str(detalle),
-                            "total": monto,
-                            "dt": parsed_dt
-                        })
+                        item["producto"] = str(detalle)
+                        item["total"] = monto
+                        datos_formateados["ventas"].append(item)
                     elif type_row == "GASTO":
-                        datos_formateados["compras"].append({
-                            "fecha": str(fecha),
-                            "detalle": str(detalle),
-                            "monto": monto,
-                            "dt": parsed_dt
-                        })
+                        item["detalle"] = str(detalle)
+                        item["monto"] = monto
+                        datos_formateados["compras"].append(item)
                 return datos_formateados
     except Exception as e:
         pass
     
     st.session_state["conexion_fallida"] = True
-    return None  # Retornar None para evitar borrar los datos locales en caso de fallas de red
+    return None  # Retornar None para evitar pisar o borrar datos locales
 
 
 def sincronizar_offline():
     api_url = st.session_state["api_url"]
     datos_cache = st.session_state["datos_cache"]
     
-    # 1. Obtener datos frescos de la nube
-    datos_nube = cargar_datos_cloud()
-    if datos_nube is None:
-        # Si no hay internet para descargar, mantenemos local y marcamos error
-        return False
-        
-    # 2. Identificar qué ventas locales no están en la nube para subirlas de forma automática
-    firmas_nube_ventas = set()
-    for v in datos_nube.get("ventas", []):
-        firma = (str(v.get("fecha", "")), str(v.get("producto", "")), float(v.get("total", 0)))
-        firmas_nube_ventas.add(firma)
-        
-    firmas_nube_compras = set()
-    for c in datos_nube.get("compras", []):
-        firma = (str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0)))
-        firmas_nube_compras.add(firma)
-        
-    subidos = 0
-    # Subir ventas locales pendientes de sincronización
+    # 1. Subir ventas locales pendientes de sincronización
     for v in datos_cache.get("ventas", []):
-        firma = (str(v.get("fecha", "")), str(v.get("producto", "")), float(v.get("total", 0)))
-        if firma not in firmas_nube_ventas:
+        if not v.get("sincronizado", False):
             payload = {
                 "action": "registrar",
                 "fecha": v["fecha"],
@@ -429,17 +421,13 @@ def sincronizar_offline():
                 "detalle": v["producto"],
                 "monto": v["total"]
             }
-            try:
-                response = requests.post(api_url, json=payload, timeout=12)
-                if response and response.status_code == 200:
-                    subidos += 1
-            except:
-                pass
+            response = post_google_sheets(api_url, payload, timeout=12)
+            if response and response.status_code == 200:
+                v["sincronizado"] = True
                 
-    # Subir gastos locales pendientes de sincronización
+    # 2. Subir gastos locales pendientes de sincronización
     for c in datos_cache.get("compras", []):
-        firma = (str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0)))
-        if firma not in firmas_nube_compras:
+        if not c.get("sincronizado", False):
             payload = {
                 "action": "registrar",
                 "fecha": c["fecha"],
@@ -447,28 +435,54 @@ def sincronizar_offline():
                 "detalle": c["detalle"],
                 "monto": c["monto"]
             }
-            try:
-                response = requests.post(api_url, json=payload, timeout=12)
-                if response and response.status_code == 200:
-                    subidos += 1
-            except:
-                pass
+            response = post_google_sheets(api_url, payload, timeout=12)
+            if response and response.status_code == 200:
+                c["sincronizado"] = True
                 
-    # 3. Volver a descargar datos unificados de Google Sheets después de la subida
-    datos_frescos = cargar_datos_cloud()
-    if datos_frescos is not None:
-        st.session_state["datos_cache"] = datos_frescos
-        st.session_state["conexion_fallida"] = False
-        return True
-    else:
-        st.session_state["datos_cache"] = datos_nube
-        return True
+    # 3. Descargar datos frescos de la nube
+    datos_nube = cargar_datos_cloud()
+    if datos_nube is None:
+        # Si la descarga falló, mantenemos lo local intacto y notificamos error
+        return False
+        
+    # 4. Fusionar datos descargados con cualquier registro que siga local sin sincronizar
+    ventas_fusionadas = datos_nube.get("ventas", [])
+    compras_fusionadas = datos_nube.get("compras", [])
+    
+    firmas_nube_ventas = {(str(v.get("fecha", "")), str(v.get("producto", "")), float(v.get("total", 0))) for v in ventas_fusionadas}
+    for v in datos_cache.get("ventas", []):
+        if not v.get("sincronizado", False):
+            firma = (str(v.get("fecha", "")), str(v.get("producto", "")), float(v.get("total", 0)))
+            if firma not in firmas_nube_ventas:
+                ventas_fusionadas.append(v)
+                
+    firmas_nube_compras = {(str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0))) for c in compras_fusionadas}
+    for c in datos_cache.get("compras", []):
+        if not c.get("sincronizado", False):
+            firma = (str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0)))
+            if firma not in firmas_nube_compras:
+                compras_fusionadas.append(c)
+                
+    st.session_state["datos_cache"] = {
+        "ventas": ventas_fusionadas,
+        "compras": compras_fusionadas,
+        "planilla": []
+    }
+    st.session_state["conexion_fallida"] = False
+    return True
 
 # Hilo de ejecución de red para subir a Google Sheets de forma asíncrona (segundo plano)
-def enviar_a_sheets_bg(api_url, payload):
+def enviar_a_sheets_bg(api_url, payload, item_id, tipo_mov):
     try:
-        # Standard post with redirections enabled to safely record data in Google Sheets
-        requests.post(api_url, json=payload, timeout=15)
+        response = post_google_sheets(api_url, payload, timeout=15)
+        if response and response.status_code == 200:
+            # Marcar localmente como sincronizado
+            if "datos_cache" in st.session_state:
+                lista = st.session_state["datos_cache"]["ventas"] if tipo_mov == "VENTA" else st.session_state["datos_cache"]["compras"]
+                for item in lista:
+                    if item.get("id") == item_id:
+                        item["sincronizado"] = True
+                        break
     except:
         pass
 
@@ -476,26 +490,26 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
     ahora = datetime.now(timezone.utc) - timedelta(hours=5)
     fecha_hoy = ahora.strftime("%Y-%m-%d %H:%M:%S")
+    item_id = str(time.time_ns())
     
     # 1. Registrar LOCALMENTE en la memoria (caché) de forma INSTANTÁNEA (0.01 segundos)
-    # Esto actualiza la interfaz del celular o la laptop de inmediato
+    # Esto actualiza la pantalla del mozo de inmediato con el chaching sonoro
+    item_nuevo = {
+        "id": item_id,
+        "fecha": fecha_hoy,
+        "dt": ahora,
+        "sincronizado": False
+    }
     if tipo == "VENTA":
-        st.session_state["datos_cache"]["ventas"].append({
-            "fecha": fecha_hoy,
-            "producto": detalle,
-            "total": monto,
-            "dt": ahora
-        })
+        item_nuevo["producto"] = detalle
+        item_nuevo["total"] = monto
+        st.session_state["datos_cache"]["ventas"].append(item_nuevo)
     elif tipo == "GASTO":
-        st.session_state["datos_cache"]["compras"].append({
-            "fecha": fecha_hoy,
-            "detalle": detalle,
-            "monto": monto,
-            "dt": ahora
-        })
+        item_nuevo["detalle"] = detalle
+        item_nuevo["monto"] = monto
+        st.session_state["datos_cache"]["compras"].append(item_nuevo)
         
-    # 2. Enviar a Google Sheets en SEGUNDO PLANO (asíncrono) para velocidad absoluta
-    # Así nunca verás textos molestos ni demoras en la pantalla del mozo
+    # 2. Enviar a Google Sheets en SEGUNDO PLANO de forma invisible sin bloquear la pantalla
     payload = {
         "action": "registrar",
         "fecha": fecha_hoy,
@@ -504,8 +518,7 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
         "monto": monto
     }
     
-    # Disparar hilo de red para que se guarde de forma invisible sin bloquear al usuario
-    hilo = threading.Thread(target=enviar_a_sheets_bg, args=(api_url, payload))
+    hilo = threading.Thread(target=enviar_a_sheets_bg, args=(api_url, payload, item_id, tipo))
     hilo.start()
     return True
 
@@ -862,7 +875,7 @@ with tab_ventas:
         
     if movimientos:
         try:
-            movimientos.sort(key=lambda x: x, reverse=True)
+            movimientos.sort(key=lambda x: x[0], reverse=True)
         except Exception:
             movimientos.reverse()
         for dt_obj, fecha, detalle, monto in movimientos:
@@ -916,7 +929,7 @@ with tab_caja:
             with st.spinner("Sincronizando y subiendo movimientos locales a la nube..."):
                 exito = sincronizar_offline()
                 if exito:
-                    st.success("🔄 ¡Sincronización maestra completada con éxito!")
+                    st.success("🔄 ¡Caja sincronizada con éxito!")
                     st.rerun()
                 else:
                     st.error("⚠️ No se pudo conectar a Google Sheets. Se mantuvieron protegidos tus registros locales actuales en el celular.")
@@ -958,7 +971,7 @@ with tab_caja:
             with st.spinner("Borrando base de datos central..."):
                 try:
                     payload = {"action": "reiniciar"}
-                    response = requests.post(api_url, json=payload, timeout=15)
+                    response = post_google_sheets(api_url, payload, timeout=15)
                     if response and response.status_code == 200:
                         st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
                         st.success("¡Base de datos en Google Sheets borrada con éxito!")
@@ -967,3 +980,4 @@ with tab_caja:
                         st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos o conexión.")
                 except Exception as e:
                     st.error(f"Error de conexión con el servidor: {e}")
+,TargetFile:/workspace/scratch/app.py}
