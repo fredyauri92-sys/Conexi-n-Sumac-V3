@@ -257,7 +257,7 @@ if "logo_path" not in st.session_state:
             break
     st.session_state["logo_path"] = logo_path
 
-col_logo, col_titulo = st.columns([0.45, 3.55])
+col_logo, col_titulo = st.columns((0.45, 3.55))
 
 with col_logo:
     if st.session_state.get("logo_path"):
@@ -406,7 +406,7 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     
     try:
         response = requests.post(api_url, json=payload, timeout=15)
-        if response and response.status_code in :
+        if response and response.status_code in (200, 302):
             st.session_state["conexion_fallida"] = False
             return True
     except Exception as e:
