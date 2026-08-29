@@ -272,11 +272,33 @@ with col_titulo:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- ENLACE DE GOOGLE SHEETS COMPLETAMENTE AUTOMÁTICO ---
+# --- CONFIGURACIÓN DE BASE DE DATOS CENTRAL (GOOGLE SHEETS) ---
 API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbyEtpDsa8tPJ3LKnNmca4Smm71X1XE88egDdqdPMqHkOZbATHnunENK4Ddc5zHvpZdq_A/exec"
+
+if "api_url" in st.query_params:
+    st.session_state["api_url"] = st.query_params["api_url"]
 
 if "api_url" not in st.session_state:
     st.session_state["api_url"] = API_URL_DEFAULT
+
+# Panel de Configuración en el Sidebar para Helios y Mozo Administrador
+with st.sidebar:
+    st.markdown("### ⚙️ Conexión Consolidada")
+    st.markdown("Sincroniza todas las laptops y celulares a la misma base de datos central en la nube.")
+    url_input = st.text_input(
+        "Pegar Enlace de Google Sheets (Web App):",
+        value=st.session_state.get("api_url", ""),
+        placeholder="https://script.google.com/macros/s/.../exec"
+    )
+    if url_input:
+        st.session_state["api_url"] = url_input
+        st.query_params["api_url"] = url_input
+        st.success("🔌 ¡Enlace conectado y guardado!")
+        
+    if st.button("🔌 Restablecer Enlace por Defecto"):
+        st.session_state["api_url"] = API_URL_DEFAULT
+        st.query_params["api_url"] = API_URL_DEFAULT
+        st.rerun()
 
 # Indicador de conexión automática arriba
 # Inicializar estado de conexión
@@ -329,8 +351,8 @@ def obtener_datetime_sort(fecha_str):
 def cargar_datos_cloud():
     api_url = st.session_state["api_url"]
     try:
-        # Se requiere allow_redirects=True (por defecto) para que el GET siga el redireccionamiento 302 y traiga el JSON completo
-        response = requests.get(api_url, timeout=10)
+        # Standard requests.get with timeout and default redirection to safely download
+        response = requests.get(api_url, timeout=15)
         if response.status_code == 200:
             st.session_state["conexion_fallida"] = False
             rows = response.json()
@@ -371,12 +393,79 @@ def cargar_datos_cloud():
         pass
     
     st.session_state["conexion_fallida"] = True
-    return None  # RETORNAR None para indicar falla de conexión de red y EVITAR borrar los datos locales actuales
+    return None  # Retornar None para evitar borrar los datos locales en caso de fallas de red
 
+
+def sincronizar_offline():
+    api_url = st.session_state["api_url"]
+    datos_cache = st.session_state["datos_cache"]
+    
+    # 1. Obtener datos frescos de la nube
+    datos_nube = cargar_datos_cloud()
+    if datos_nube is None:
+        # Si no hay internet para descargar, mantenemos local y marcamos error
+        return False
+        
+    # 2. Identificar qué ventas locales no están en la nube para subirlas de forma automática
+    firmas_nube_ventas = set()
+    for v in datos_nube.get("ventas", []):
+        firma = (str(v.get("fecha", "")), str(v.get("producto", "")), float(v.get("total", 0)))
+        firmas_nube_ventas.add(firma)
+        
+    firmas_nube_compras = set()
+    for c in datos_nube.get("compras", []):
+        firma = (str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0)))
+        firmas_nube_compras.add(firma)
+        
+    subidos = 0
+    # Subir ventas locales pendientes de sincronización
+    for v in datos_cache.get("ventas", []):
+        firma = (str(v.get("fecha", "")), str(v.get("producto", "")), float(v.get("total", 0)))
+        if firma not in firmas_nube_ventas:
+            payload = {
+                "action": "registrar",
+                "fecha": v["fecha"],
+                "tipo": "VENTA",
+                "detalle": v["producto"],
+                "monto": v["total"]
+            }
+            try:
+                response = requests.post(api_url, json=payload, timeout=12)
+                if response and response.status_code == 200:
+                    subidos += 1
+            except:
+                pass
+                
+    # Subir gastos locales pendientes de sincronización
+    for c in datos_cache.get("compras", []):
+        firma = (str(c.get("fecha", "")), str(c.get("detalle", "")), float(c.get("monto", 0)))
+        if firma not in firmas_nube_compras:
+            payload = {
+                "action": "registrar",
+                "fecha": c["fecha"],
+                "tipo": "GASTO",
+                "detalle": c["detalle"],
+                "monto": c["monto"]
+            }
+            try:
+                response = requests.post(api_url, json=payload, timeout=12)
+                if response and response.status_code == 200:
+                    subidos += 1
+            except:
+                pass
+                
+    # 3. Volver a descargar datos unificados de Google Sheets después de la subida
+    datos_frescos = cargar_datos_cloud()
+    if datos_frescos is not None:
+        st.session_state["datos_cache"] = datos_frescos
+        st.session_state["conexion_fallida"] = False
+        return True
+    else:
+        st.session_state["datos_cache"] = datos_nube
+        return True
 
 def registrar_movimiento_instantaneo(tipo, detalle, monto):
     api_url = st.session_state["api_url"]
-    # Obtener la hora actual de Sicuani (Perú) que es UTC-5
     ahora = datetime.now(timezone.utc) - timedelta(hours=5)
     fecha_hoy = ahora.strftime("%Y-%m-%d %H:%M:%S")
     
@@ -396,7 +485,7 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
             "dt": ahora
         })
         
-    # 2. Enviar a Google Sheets de forma SÍNCRONA pero ULTRA-VELOZ (1-hop, allow_redirects=False)
+    # 2. Enviar a Google Sheets de forma síncrona, robusta y siguiendo desvíos de forma nativa
     payload = {
         "action": "registrar",
         "fecha": fecha_hoy,
@@ -406,13 +495,12 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     }
     
     try:
-        # allow_redirects=False evita el desvío a Google User Content, reduciendo el tiempo a menos de 0.5 segundos.
-        # Garantiza la escritura física en Google Sheets antes de que la página haga rerun.
-        response = requests.post(api_url, json=payload, timeout=8, allow_redirects=False)
-        # Los códigos de estado 200 o 302 indican que la petición POST fue recibida e iniciada por Google Apps Script con éxito.
-        if response and response.status_code in (200, 302):
-            st.session_state["conexion_fallida"] = False
-            return True
+        # Realizamos el POST con redirecciones habilitadas y un spinner que informa al usuario
+        with st.spinner("⚡ Registrando venta en Google Sheets..."):
+            response = requests.post(api_url, json=payload, timeout=15)
+            if response and response.status_code == 200:
+                st.session_state["conexion_fallida"] = False
+                return True
     except Exception as e:
         pass
         
@@ -823,14 +911,13 @@ with tab_caja:
         st.markdown("<span style='font-size: 13px; color: #CFD8DC;'>Sincronizar las ventas de todos los mozos:</span>", unsafe_allow_html=True)
     with col_v2:
         if st.button("🔄 Actualizar", key="btn_sync_caja"):
-            with st.spinner("Sincronizando con la Caja Central..."):
-                datos_nuevos = cargar_datos_cloud()
-                if datos_nuevos is not None:
-                    st.session_state["datos_cache"] = datos_nuevos
-                    st.success("🔄 ¡Caja sincronizada con éxito!")
+            with st.spinner("Sincronizando y subiendo movimientos locales a la nube..."):
+                exito = sincronizar_offline()
+                if exito:
+                    st.success("🔄 ¡Sincronización maestra completada con éxito!")
                     st.rerun()
                 else:
-                    st.error("⚠️ No se pudo conectar a Google Sheets. Se mantuvieron tus registros locales actuales para evitar pérdidas de datos.")
+                    st.error("⚠️ No se pudo conectar a Google Sheets. Se mantuvieron protegidos tus registros locales actuales en el celular.")
 
     total_v = sum(v["total"] for v in datos["ventas"])
     total_g = sum(c["monto"] for c in datos["compras"])
