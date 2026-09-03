@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 # Configuración de página móvil premium
 st.set_page_config(
-    page_title="SUMAC POS - Sicuani",
+    page_title="SUMAC POS Premium v53 - Sicuani",
     page_icon="🍲",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -245,7 +245,7 @@ def reproducir_sonido(tipo):
     """
     st.components.v1.html(js_sonido, height=0, width=0)
 
-# --- ENCABEZADO INTEGRADO PREMIUM ---
+# --- ENCABEZADO INTEGRADO PREMIUM (LOGO EN CACHÉ DE SESIÓN PARA MÁXIMA VELOCIDAD) ---
 if "logo_path" not in st.session_state:
     logo_path = None
     for l in ["yauri_cloud_logo_final.png", "yauri_cloud_logo_rectangular.png", "yauri_cloud_logo_futuristic_1.png"]:
@@ -273,7 +273,7 @@ with col_titulo:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --- CONFIGURACIÓN DE BASE DE DATOS CENTRAL (GOOGLE SHEETS) ---
-API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbyEtpDsa8tPJ3LKnNmca4Smm71X1XE88egDdqdPMqHkOZbATHnunENK4Ddc5zHvpZdq_A/exec"
+API_URL_DEFAULT = "API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbzPPC6sxanzXGUiYgLHjdUaC0JJoj-U7qDiE9GXi7Dn9dMbNyFY1wmjONjHrAZ8_Nj5/exec"
 
 if "api_url" in st.query_params:
     st.session_state["api_url"] = st.query_params["api_url"]
@@ -492,6 +492,7 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     item_id = str(time.time_ns())
     
     # 1. Registrar LOCALMENTE en la memoria (caché) de forma INSTANTÁNEA (0.01 segundos)
+    # Esto actualiza la pantalla del mozo de inmediato con el chaching sonoro
     item_nuevo = {
         "id": item_id,
         "fecha": fecha_hoy,
@@ -527,6 +528,7 @@ if "datos_cache" not in st.session_state:
         if datos_nuevos is not None:
             st.session_state["datos_cache"] = datos_nuevos
         else:
+            # Si no hay internet al iniciar, empezamos vacíos pero marcamos error de conexión
             st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
             st.session_state["conexion_fallida"] = True
 
@@ -545,10 +547,10 @@ SOUND_ID_MAP = {
 # Menú de Productos de Caldería Sumac con rutas de imagen reales
 PRODUCTOS_INFO = [
     {"nombre": "Caldo sin presa", "precio": 5.0, "icono": "🍲", "imagen": "caldo_sin_presa.png", "lleva_taper": True},
-    {"nombre": "Caldo presa mediana", "precio": 8.0, "icono": "🍲", "imagen": "caldo_sicuani.png", "lleva_taper": True},
-    {"nombre": "Caldo presa entera", "precio": 12.0, "icono": "🍲", "imagen": "caldo_presa_grande.png", "lleva_taper": True},
-    {"nombre": "Gaseosa personal", "precio": 2.0, "icono": "🥤", "imagen": "gaseosas_personales.png", "lleva_taper": False},
-    {"nombre": "Gaseosa de 1 Litro", "precio": 6.0, "icono": "🍾", "imagen": "gaseosas_litro.png", "lleva_taper": False},
+    {"nombre": "Caldo presa mediana", "precio": 8.0, "icono": "🍲", "imagen": "caldo_presa_mediana.png", "lleva_taper": True},
+    {"nombre": "Caldo presa entera", "precio": 12.0, "icono": "🍲", "imagen": "caldo_presa_entera.png", "lleva_taper": True},
+    {"nombre": "Gaseosa personal", "precio": 2.0, "icono": "🥤", "imagen": "gaseosa_peruana.png", "lleva_taper": False},
+    {"nombre": "Gaseosa de 1 Litro", "precio": 6.0, "icono": "🍾", "imagen": "gaseosa_litro.png", "lleva_taper": False},
     {"nombre": "Agua mineral", "precio": 1.0, "icono": "💧", "imagen": "agua_san_luis.png", "lleva_taper": False}
 ]
 
@@ -564,7 +566,7 @@ def contar_vendidos_hoy(nombre_base):
             total += 1
     return total
 
-# --- FUNCIÓN SUPER ROBUSTA Y OPTIMIZADA PARA OBTENER BASE64 DE IMAGEN ---
+# --- FUNCIÓN SUPER ROBUSTA Y OPTIMIZADA PARA OBTENER BASE64 DE IMAGEN EN CUALQUIER ENTORNO ---
 @st.cache_data
 def get_image_base64(img_path):
     import base64
@@ -623,7 +625,7 @@ def get_image_base64(img_path):
     return "" 
 
 
-# --- ESTADO INICIAL DEL SPLASH SCREEN (3 SEGUNDOS) ---
+# --- ESTADO INICIAL DEL SPLASH SCREEN (CONFIGURADO A 3 SEGUNDOS EXACTOS) ---
 if "splash_done" not in st.session_state:
     st.session_state["splash_done"] = False
 
@@ -688,7 +690,7 @@ def render_splash():
 if not st.session_state["splash_done"]:
     render_splash()
     
-    # Pre-cache de imágenes base64 para acelerar al máximo el renderizado
+    # Pre-cache de imágenes base64 para acelerar al máximo el renderizado (Cero retraso en clics)
     if "imagenes_base64" not in st.session_state:
         st.session_state["imagenes_base64"] = {}
     for p in PRODUCTOS_INFO:
@@ -696,6 +698,7 @@ if not st.session_state["splash_done"]:
         if img_n not in st.session_state["imagenes_base64"]:
             st.session_state["imagenes_base64"][img_n] = get_image_base64(img_n)
             
+    # Duración de 3 segundos reales solicitados por el usuario
     time.sleep(3.0)
     st.session_state["splash_done"] = True
     st.rerun()
@@ -767,9 +770,11 @@ with tab_ventas:
             if not b64_img:
                 b64_img = get_image_base64(p["imagen"])
                 
+            # Anchor and CSS unificado para que funcione el selector div.element-container:has(#target-anchor) + div.element-container
             st.markdown(f"""
             <div id="target-anchor-{i}"></div>
             <style>
+            /* Alinear a la izquierda el contenedor del botón de imagen de Streamlit */
             div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] {{
                 display: flex !important;
                 justify-content: flex-start !important;
@@ -778,6 +783,7 @@ with tab_ventas:
                 margin: 0 !important;
                 padding-left: 5px !important;
             }}
+            /* Estilo del botón de imagen (fijamos margin-left a 5px en lugar de centrarlo) */
             div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button {{
                 background-image: url(data:image/png;base64,{b64_img}) !important;
                 background-color: transparent !important;
@@ -816,7 +822,7 @@ with tab_ventas:
                     st.session_state["reproducir_sonido"] = SOUND_ID_MAP.get(p["nombre"], "venta")
                     st.rerun()
             
-            # Descripción y precio alineados de forma estricta hacia la IZQUIERDA
+            # Descripción y precio alineados de forma estricta hacia la IZQUIERDA (recta de la línea verde)
             st.markdown(f"""
             <div style='text-align: left; margin: 0; width: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding-left: 5px;'>
                 <div style='font-weight: bold; font-size: 13px; line-height: 1.1; margin-top: 4px; color: #FFFFFF;'>{icono} {p['nombre']}</div>
@@ -870,7 +876,7 @@ with tab_ventas:
         
     if movimientos:
         try:
-            movimientos.sort(key=lambda x: x, reverse=True)
+            movimientos.sort(key=lambda x: x[0], reverse=True)
         except Exception:
             movimientos.reverse()
         for dt_obj, fecha, detalle, monto in movimientos:
