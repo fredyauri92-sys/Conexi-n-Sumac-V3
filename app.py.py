@@ -273,7 +273,7 @@ with col_titulo:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --- CONFIGURACIÓN DE BASE DE DATOS CENTRAL (GOOGLE SHEETS) ---
-API_URL_DEFAULT = "API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbzPPC6sxanzXGUiYgLHjdUaC0JJoj-U7qDiE9GXi7Dn9dMbNyFY1wmjONjHrAZ8_Nj5/exec"
+API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbzPPC6sxanzXGUiYgLHjdUaC0JJoj-U7qDiE9GXi7Dn9dMbNyFY1wmjONjHrAZ8_Nj5/exec"
 
 if "api_url" in st.query_params:
     st.session_state["api_url"] = st.query_params["api_url"]
