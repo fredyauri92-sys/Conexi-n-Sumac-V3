@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 # Configuración de página móvil premium
 st.set_page_config(
-    page_title="SUMAC POS Premium v53 - Sicuani",
+    page_title="SUMAC POS - Sicuani",
     page_icon="🍲",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -96,7 +96,7 @@ st.markdown("""
         margin-bottom: 15px;
         border: 1px solid #00FF66;
     }
-    /* Quitar bordes feos del formulario en modo oscuro */
+    /* Quitar bordes del formulario en modo oscuro */
     [data-testid="stForm"] {
         border: 1px solid #37474F !important;
         border-radius: 15px !important;
@@ -105,16 +105,14 @@ st.markdown("""
     }
 
     /* =========================================================================
-       SÚPER RE-DISEÑO COMPACTO Y SIMÉTRICO PARA CELULARES (100% COMPATIBLE)
+       SÚPER RE-DISEÑO COMPACTO Y SIMÉTRICO PARA CELULARES
        ========================================================================= */
-    /* Forzar que todos los bloques horizontales de productos se mantengan en fila (no colapsen) en celulares */
     div[data-testid="stHorizontalBlock"]:has(div[id*="sub-anchor-"]) {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         gap: 8px !important;
         align-items: center !important;
     }
-    /* Impedir el colapso vertical de las columnas dentro de los bloques de productos */
     div[data-testid="stHorizontalBlock"]:has(div[id*="sub-anchor-"]) > div[data-testid="column"] {
         flex: 1 1 0% !important;
         width: 100% !important;
@@ -122,8 +120,6 @@ st.markdown("""
         padding: 0 !important;
         margin: 0 !important;
     }
-
-    /* Alinear perfectamente cada contenedor de la columna izquierda (imagen, descripción, precio) hacia la izquierda */
     div[data-testid="column"]:has(div[id*="left-column-anchor-"]) div.element-container {
         display: flex !important;
         justify-content: flex-start !important;
@@ -132,7 +128,7 @@ st.markdown("""
         width: 100% !important;
     }
 
-    /* Estilo premium para los botones unificados de modificadores (Huevo) */
+    /* Estilo botones modificadores (Huevo) */
     div.element-container:has(div[id*="egg-anchor-"]) + div.element-container div[data-testid="stButton"] button {
         background-color: #1E1E1E !important;
         color: #00FF66 !important;
@@ -158,7 +154,7 @@ st.markdown("""
         transform: scale(0.95) !important;
     }
 
-    /* Estilo premium para los botones unificados de modificadores (Táper) */
+    /* Estilo botones modificadores (Táper) */
     div.element-container:has(div[id*="taper-anchor-"]) + div.element-container div[data-testid="stButton"] button {
         background-color: #1E1E1E !important;
         color: #2979FF !important;
@@ -245,7 +241,7 @@ def reproducir_sonido(tipo):
     """
     st.components.v1.html(js_sonido, height=0, width=0)
 
-# --- ENCABEZADO INTEGRADO PREMIUM (LOGO EN CACHÉ DE SESIÓN PARA MÁXIMA VELOCIDAD) ---
+# --- ENCABEZADO INTEGRADO PREMIUM ---
 if "logo_path" not in st.session_state:
     logo_path = None
     for l in ["yauri_cloud_logo_final.png", "yauri_cloud_logo_rectangular.png", "yauri_cloud_logo_futuristic_1.png"]:
@@ -273,7 +269,7 @@ with col_titulo:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --- CONFIGURACIÓN DE BASE DE DATOS CENTRAL (GOOGLE SHEETS) ---
-API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbw-fWPI7iVQTzZRUD5s1ICj999SqDIBoywHpibCqSBAFfmNsf7rMTi_fMyO6ZuhQZOYhQ/exec"
+API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbzPPC6sxanzXGUiYgLHjdUaC0JJoj-U7qDiE9GXi7Dn9dMbNyFY1wmjONjHrAZ8_Nj5/exec"
 
 if "api_url" in st.query_params:
     st.session_state["api_url"] = st.query_params["api_url"]
@@ -281,7 +277,7 @@ if "api_url" in st.query_params:
 if "api_url" not in st.session_state:
     st.session_state["api_url"] = API_URL_DEFAULT
 
-# Panel de Configuración en el Sidebar para Helios y Mozo Administrador
+# Panel de Configuración en el Sidebar
 with st.sidebar:
     st.markdown("### ⚙️ Conexión Consolidada")
     st.markdown("Sincroniza todas las laptops y celulares a la misma base de datos central en la nube.")
@@ -304,7 +300,7 @@ with st.sidebar:
 if "conexion_fallida" not in st.session_state:
     st.session_state["conexion_fallida"] = False
 
-# Indicador de conexión automática arriba con colores dinámicos
+# Indicador de conexión automática arriba
 if st.session_state.get("conexion_fallida", False):
     st.markdown("<div class='status-badge' style='background-color: #721C24; color: #F8D7DA; border: 1px solid #F5C6CB;'>⚠️ TRABAJANDO EN MODO LOCAL (Los datos se guardarán temporalmente en el celular. Dale a '🔄 Actualizar' en Ver Caja)</div>", unsafe_allow_html=True)
 else:
@@ -339,26 +335,24 @@ def obtener_datetime_sort(fecha_str):
         numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
             if len(numbers) == 4:
-                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
+                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), 0)
             else:
-                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
+                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
     except Exception:
         pass
     return datetime.min
 
-# --- FUNCIÓN DE ENVÍO DIRECTO MANEJANDO REDIRECCIONAMIENTOS 302 DE GOOGLE ---
+# --- FUNCIÓN DE ENVÍO DIRECTO ---
 def post_google_sheets(api_url, payload, timeout=15):
     try:
-        # Desactivamos redirección automática para máxima velocidad (el registro ocurre antes del redireccionamiento)
         response = requests.post(api_url, json=payload, timeout=timeout, allow_redirects=False)
-        # Los códigos 200 (éxito directo) o 302 (redireccionamiento estándar de Apps Script) indican que Google recibió y guardó los datos
         if response and response.status_code in (200, 301, 302, 303, 307, 308):
             return response
         return None
     except Exception as e:
         return None
 
-# --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE Y PRE-PARSEO DE FECHAS ---
+# --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE ---
 def cargar_datos_cloud():
     api_url = st.session_state["api_url"]
     try:
@@ -375,7 +369,6 @@ def cargar_datos_cloud():
                     type_row = row.get("tipo", "")
                     detalle = row.get("detalle", "")
                     
-                    # Conversión defensiva de monto
                     monto_raw = row.get("monto", 0)
                     try:
                         monto = float(monto_raw) if monto_raw not in ["", None] else 0.0
@@ -403,14 +396,13 @@ def cargar_datos_cloud():
         pass
     
     st.session_state["conexion_fallida"] = True
-    return None  # Retornar None para evitar pisar o borrar datos locales en caso de fallas de red
-
+    return None
 
 def sincronizar_offline():
     api_url = st.session_state["api_url"]
     datos_cache = st.session_state["datos_cache"]
     
-    # 1. Subir ventas locales pendientes de sincronización
+    # 1. Subir ventas locales pendientes
     for v in datos_cache.get("ventas", []):
         if not v.get("sincronizado", False):
             payload = {
@@ -424,7 +416,7 @@ def sincronizar_offline():
             if response is not None:
                 v["sincronizado"] = True
                 
-    # 2. Subir gastos locales pendientes de sincronización
+    # 2. Subir gastos locales pendientes
     for c in datos_cache.get("compras", []):
         if not c.get("sincronizado", False):
             payload = {
@@ -438,13 +430,10 @@ def sincronizar_offline():
             if response is not None:
                 c["sincronizado"] = True
                 
-    # 3. Descargar datos frescos de la nube
     datos_nube = cargar_datos_cloud()
     if datos_nube is None:
-        # Si la descarga falló, mantenemos lo local intacto y notificamos error
         return False
         
-    # 4. Fusionar datos descargados con cualquier registro que siga local sin sincronizar
     ventas_fusionadas = datos_nube.get("ventas", [])
     compras_fusionadas = datos_nube.get("compras", [])
     
@@ -470,12 +459,10 @@ def sincronizar_offline():
     st.session_state["conexion_fallida"] = False
     return True
 
-# Hilo de ejecución de red para subir a Google Sheets de forma asíncrona (segundo plano)
 def enviar_a_sheets_bg(api_url, payload, item_id, tipo_mov):
     try:
         response = post_google_sheets(api_url, payload, timeout=15)
         if response is not None:
-            # Marcar localmente como sincronizado
             if "datos_cache" in st.session_state:
                 lista = st.session_state["datos_cache"]["ventas"] if tipo_mov == "VENTA" else st.session_state["datos_cache"]["compras"]
                 for item in lista:
@@ -491,8 +478,6 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     fecha_hoy = ahora.strftime("%Y-%m-%d %H:%M:%S")
     item_id = str(time.time_ns())
     
-    # 1. Registrar LOCALMENTE en la memoria (caché) de forma INSTANTÁNEA (0.01 segundos)
-    # Esto actualiza la pantalla del mozo de inmediato con el chaching sonoro
     item_nuevo = {
         "id": item_id,
         "fecha": fecha_hoy,
@@ -508,7 +493,6 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
         item_nuevo["monto"] = monto
         st.session_state["datos_cache"]["compras"].append(item_nuevo)
         
-    # 2. Enviar a Google Sheets en SEGUNDO PLANO de forma invisible sin bloquear la pantalla
     payload = {
         "action": "registrar",
         "fecha": fecha_hoy,
@@ -521,20 +505,17 @@ def registrar_movimiento_instantaneo(tipo, detalle, monto):
     hilo.start()
     return True
 
-# Sincronización de caché de forma segura al iniciar sesión
 if "datos_cache" not in st.session_state:
     with st.spinner("🔌 Conectando con la Caja Consolidada..."):
         datos_nuevos = cargar_datos_cloud()
         if datos_nuevos is not None:
             st.session_state["datos_cache"] = datos_nuevos
         else:
-            # Si no hay internet al iniciar, empezamos vacíos pero marcamos error de conexión
             st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
             st.session_state["conexion_fallida"] = True
 
 datos = st.session_state["datos_cache"]
 
-# Mapeo de sonidos distintivos por producto
 SOUND_ID_MAP = {
     "Caldo sin presa": "caldo_sin",
     "Caldo presa mediana": "caldo_med",
@@ -544,21 +525,19 @@ SOUND_ID_MAP = {
     "Agua mineral": "agua"
 }
 
-# Menú de Productos de Caldería Sumac con rutas de imagen reales
+# Menú de Productos de Caldería Sumac con precios corregidos y nombres de GitHub exactos
 PRODUCTOS_INFO = [
     {"nombre": "Caldo sin presa", "precio": 5.0, "icono": "🍲", "imagen": "caldo_sin_presa.png", "lleva_taper": True},
     {"nombre": "Caldo presa mediana", "precio": 8.0, "icono": "🍲", "imagen": "caldo_sicuani.png", "lleva_taper": True},
     {"nombre": "Caldo presa entera", "precio": 12.0, "icono": "🍲", "imagen": "caldo_presa_grande.png", "lleva_taper": True},
-    {"nombre": "Gaseosa personal", "precio": 2.0, "icono": "🥤", "imagen": "gasesas_personales.png", "lleva_taper": False},
+    {"nombre": "Gaseosa personal", "precio": 3.0, "icono": "🥤", "imagen": "gasesas_personales.png", "lleva_taper": False},
     {"nombre": "Gaseosa de 1 Litro", "precio": 6.0, "icono": "🍾", "imagen": "gasesoosas_litro.png", "lleva_taper": False},
-    {"nombre": "Agua mineral", "precio": 1.0, "icono": "💧", "imagen": "agua_san_luis.png", "lleva_taper": False}
+    {"nombre": "Agua mineral", "precio": 2.0, "icono": "💧", "imagen": "agua_san_luis.png", "lleva_taper": False}
 ]
 
-# Inicializar estado de sonido
 if "reproducir_sonido" not in st.session_state:
     st.session_state["reproducir_sonido"] = False
 
-# Helper para contar ventas consolidadas hoy por producto o detalle
 def contar_vendidos_hoy(nombre_base):
     total = 0
     for v in datos["ventas"]:
@@ -566,8 +545,7 @@ def contar_vendidos_hoy(nombre_base):
             total += 1
     return total
 
-# --- FUNCIÓN SUPER ROBUSTA Y OPTIMIZADA PARA OBTENER BASE64 DE IMAGEN EN CUALQUIER ENTORNO ---
-@st.cache_data
+# FUNCIÓN DE IMAGEN ULTRA ROBUSTA (SIN BLOQUEOS DE CACHÉ DE STREAMLIT)
 def get_image_base64(img_path):
     import base64
     import os
@@ -596,7 +574,7 @@ def get_image_base64(img_path):
         fallback_map = {
             "caldo_sin_presa.png": "caldo_presa_grande.png",
             "caldo_sicuani.png": "caldo_presa_grande.png",
-            "agua_san_luis.png": "gaseosas_personales.png"
+            "agua_san_luis.png": "gasesas_personales.png"
         }
         fallback_name = fallback_map.get(os.path.basename(img_path))
         if fallback_name:
@@ -622,10 +600,8 @@ def get_image_base64(img_path):
                 return base64.b64encode(f.read()).decode("utf-8")
         except Exception:
             pass
-    return "" 
+    return ""
 
-
-# --- ESTADO INICIAL DEL SPLASH SCREEN (CONFIGURADO A 3 SEGUNDOS EXACTOS) ---
 if "splash_done" not in st.session_state:
     st.session_state["splash_done"] = False
 
@@ -690,7 +666,6 @@ def render_splash():
 if not st.session_state["splash_done"]:
     render_splash()
     
-    # Pre-cache de imágenes base64 para acelerar al máximo el renderizado (Cero retraso en clics)
     if "imagenes_base64" not in st.session_state:
         st.session_state["imagenes_base64"] = {}
     for p in PRODUCTOS_INFO:
@@ -698,19 +673,16 @@ if not st.session_state["splash_done"]:
         if img_n not in st.session_state["imagenes_base64"]:
             st.session_state["imagenes_base64"][img_n] = get_image_base64(img_n)
             
-    # Duración de 3 segundos reales solicitados por el usuario
     time.sleep(3.0)
     st.session_state["splash_done"] = True
     st.rerun()
 
-# Asegurar que el cache esté cargado
 if "imagenes_base64" not in st.session_state or len(st.session_state["imagenes_base64"]) == 0:
     st.session_state["imagenes_base64"] = {}
     for p in PRODUCTOS_INFO:
         img_n = p["imagen"]
         st.session_state["imagenes_base64"][img_n] = get_image_base64(img_n)
 
-# Función para extraer la hora (HH:MM AM/PM)
 def extraer_hora(fecha_str):
     if not fecha_str:
         return "--:--"
@@ -747,19 +719,16 @@ def extraer_hora(fecha_str):
     
     return dt.strftime("%I:%M %p")
 
-# Pestañas de navegación móvil cómoda en la parte superior
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
 
 with tab_ventas:
     st.markdown("<h4 style='color: #CFD8DC;'>Selecciona para vender:</h4>", unsafe_allow_html=True)
     
-    # Cada producto ocupa una fila completa para evitar colapsos y amontonamientos en móvil
     for i, p in enumerate(PRODUCTOS_INFO):
         cant = contar_vendidos_hoy(p["nombre"])
         es_caldo = p.get("lleva_taper", False)
         icono = p.get("icono", "🍲")
         
-        # Siempre dividimos horizontalmente usando la proporción exacta [0.65, 0.35]
         st.markdown(f'<div id="sub-anchor-{i}"></div>', unsafe_allow_html=True)
         sub_left, sub_right = st.columns([0.65, 0.35])
             
@@ -770,11 +739,9 @@ with tab_ventas:
             if not b64_img:
                 b64_img = get_image_base64(p["imagen"])
                 
-            # Anchor and CSS unificado para que funcione el selector div.element-container:has(#target-anchor) + div.element-container
             st.markdown(f"""
             <div id="target-anchor-{i}"></div>
             <style>
-            /* Alinear a la izquierda el contenedor del botón de imagen de Streamlit */
             div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] {{
                 display: flex !important;
                 justify-content: flex-start !important;
@@ -783,7 +750,6 @@ with tab_ventas:
                 margin: 0 !important;
                 padding-left: 5px !important;
             }}
-            /* Estilo del botón de imagen (fijamos margin-left a 5px en lugar de centrarlo) */
             div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button {{
                 background-image: url(data:image/png;base64,{b64_img}) !important;
                 background-color: transparent !important;
@@ -815,14 +781,12 @@ with tab_ventas:
             </style>
             """, unsafe_allow_html=True)
             
-            # Botón nativo clickable de Caldo o Bebida
             if st.button("", key=f"btn_sell_caldo_{i}"):
                 if registrar_movimiento_instantaneo("VENTA", p["nombre"], p["precio"]):
                     st.toast(f"🟢 Venta registrada: {p['nombre']}", icon=icono)
                     st.session_state["reproducir_sonido"] = SOUND_ID_MAP.get(p["nombre"], "venta")
                     st.rerun()
             
-            # Descripción y precio alineados de forma estricta hacia la IZQUIERDA (recta de la línea verde)
             st.markdown(f"""
             <div style='text-align: left; margin: 0; width: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding-left: 5px;'>
                 <div style='font-weight: bold; font-size: 13px; line-height: 1.1; margin-top: 4px; color: #FFFFFF;'>{icono} {p['nombre']}</div>
@@ -834,7 +798,6 @@ with tab_ventas:
             if es_caldo:
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 
-                # --- MODIFICADOR HUEVO EXTRA (🥚 S/.1.0) ---
                 st.markdown(f'<div id="egg-anchor-{i}"></div>', unsafe_allow_html=True)
                 if st.button("🥚 S/.1.0", key=f"btn_h_indep_{i}"):
                     nombre_huevo = f"{p['nombre']} (+1 huevo)"
@@ -845,7 +808,6 @@ with tab_ventas:
                         
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 
-                # --- MODIFICADOR TÁPER (🥃 S/.1.0) ---
                 st.markdown(f'<div id="taper-anchor-{i}"></div>', unsafe_allow_html=True)
                 if st.button("🥃 S/.1.0", key=f"btn_t_indep_{i}"):
                     nombre_taper = f"{p['nombre']} (en táper)"
@@ -856,10 +818,8 @@ with tab_ventas:
             else:
                 st.write("")
                 
-        # Una pequeña línea separadora sutil para diferenciar filas
         st.markdown("<div style='border-bottom: 1px solid #222222; margin: 10px 0;'></div>", unsafe_allow_html=True)
 
-    # Lanzador de sonido
     if st.session_state["reproducir_sonido"]:
         reproducir_sonido(st.session_state["reproducir_sonido"])
         st.session_state["reproducir_sonido"] = False
@@ -933,7 +893,7 @@ with tab_caja:
                     st.success("🔄 ¡Caja sincronizada con éxito!")
                     st.rerun()
                 else:
-                    st.error("⚠️ No se pudo conectar a Google Sheets. Se mantuvieron protegidos tus registros locales actuales en el celular.")
+                    st.error("⚠️ No se pudo conectar a Google Sheets. Se mantuvieron protegidos tus registros locales actuales.")
 
     total_v = sum(v["total"] for v in datos["ventas"])
     total_g = sum(c["monto"] for c in datos["compras"])
@@ -961,7 +921,6 @@ with tab_caja:
     else:
         st.info("Registra ventas para ver el análisis de rentabilidad.")
 
-    # --- SECCIÓN SEGURO DE REINICIO DE CAJA ---
     st.markdown("---")
     st.markdown("<h5 style='color: #FF0055;'>🧹 Zona de Seguridad</h5>", unsafe_allow_html=True)
     
@@ -978,6 +937,6 @@ with tab_caja:
                         st.success("¡Base de datos en Google Sheets borrada con éxito!")
                         st.rerun()
                     else:
-                        st.error("Error al borrar la hoja de Google Sheets. Verifica tus permisos o conexión.")
+                        st.error("Error al borrar la hoja de Google Sheets.")
                 except Exception as e:
                     st.error(f"Error de conexión con el servidor: {e}")
