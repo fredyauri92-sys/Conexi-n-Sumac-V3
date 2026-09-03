@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 # Configuración de página móvil premium
 st.set_page_config(
-    page_title="SUMAC POS - Sicuani",
+    page_title="SUMAC POS Premium v56 - Sicuani",
     page_icon="🍲",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -335,9 +335,9 @@ def obtener_datetime_sort(fecha_str):
         numbers = re.findall(r"\d+", clean_str)
         if len(numbers) >= 5:
             if len(numbers) == 4:
-                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), 0)
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), 0)
             else:
-                return datetime(int(numbers[0]), int(numbers[1]), int(numbers[2]), int(numbers[3]), int(numbers[4]))
+                return datetime(int(numbers), int(numbers), int(numbers), int(numbers), int(numbers))
     except Exception:
         pass
     return datetime.min
@@ -670,7 +670,7 @@ if not st.session_state["splash_done"]:
         st.session_state["imagenes_base64"] = {}
     for p in PRODUCTOS_INFO:
         img_n = p["imagen"]
-        if img_n not in st.session_state["imagenes_base64"]:
+        if img_n not in st.session_state["imagenes_base64"] or st.session_state["imagenes_base64"][img_n] == "":
             st.session_state["imagenes_base64"][img_n] = get_image_base64(img_n)
             
     time.sleep(3.0)
@@ -679,8 +679,9 @@ if not st.session_state["splash_done"]:
 
 if "imagenes_base64" not in st.session_state or len(st.session_state["imagenes_base64"]) == 0:
     st.session_state["imagenes_base64"] = {}
-    for p in PRODUCTOS_INFO:
-        img_n = p["imagen"]
+for p in PRODUCTOS_INFO:
+    img_n = p["imagen"]
+    if img_n not in st.session_state["imagenes_base64"] or st.session_state["imagenes_base64"][img_n] == "":
         st.session_state["imagenes_base64"][img_n] = get_image_base64(img_n)
 
 def extraer_hora(fecha_str):
@@ -836,7 +837,7 @@ with tab_ventas:
         
     if movimientos:
         try:
-            movimientos.sort(key=lambda x: x[0], reverse=True)
+            movimientos.sort(key=lambda x: x, reverse=True)
         except Exception:
             movimientos.reverse()
         for dt_obj, fecha, detalle, monto in movimientos:
