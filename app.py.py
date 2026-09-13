@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 # Configuración de página móvil premium
 st.set_page_config(
-    page_title="SUMAC POS Premium v56 - Sicuani",
+    page_title="SUMAC POS Premium v61 - Sicuani",
     page_icon="🍲",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -374,64 +374,46 @@ def obtener_datetime_sort(fecha_str):
 # --- FUNCIÓN DE ENVÍO DIRECTO MANEJANDO REDIRECCIONAMIENTOS 302 DE GOOGLE ---
 def post_google_sheets(api_url, payload, timeout=15):
     try:
-        # Desactivamos redirección automática para máxima velocidad (el registro ocurre antes del redireccionamiento)
-        response = requests.post(api_url, json=payload, timeout=timeout, allow_redirects=False)
-        # Los códigos 200 (éxito directo) o 302 (redireccionamiento estándar de Apps Script) indican que Google recibió y guardó los datos
-        if response and response.status_code in (301, 302, 303, 307, 308):
-            location = response.headers.get("Location", "")
-            if "accounts.google.com" in location or "ServiceLogin" in location:
-                # Redirigió a la página de login de Google -> Error de permisos
-                return None
-            return response
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        response = requests.post(api_url, json=payload, headers=headers, timeout=timeout, allow_redirects=True)
         if response and response.status_code == 200:
-            content_type = response.headers.get("Content-Type", "")
-            if "html" in content_type:
+            final_url = str(response.url).lower()
+            content_type = str(response.headers.get("Content-Type", "")).lower()
+            if "accounts.google" in final_url or "servicelogin" in final_url or "text/html" in content_type:
                 return None
             return response
         return None
-    except Exception as e:
+    except Exception:
         return None
 
 # --- SISTEMA DE BASES DE DATOS CLOUD CON CACHÉ INTELIGENTE Y PRE-PARSEO DE FECHAS ---
 def cargar_datos_cloud():
     api_url = st.session_state["api_url"]
     try:
-        response = requests.get(api_url, timeout=15, allow_redirects=False)
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        response = requests.get(api_url, headers=headers, timeout=12, allow_redirects=True)
+        final_url = str(response.url).lower()
+        content_type = str(response.headers.get("Content-Type", "")).lower()
         
-        # Si nos da un redireccionamiento (302)
-        if response.status_code in (301, 302, 303, 307, 308):
-            location = response.headers.get("Location", "")
-            if "accounts.google.com" in location or "ServiceLogin" in location:
+        if "accounts.google" in final_url or "servicelogin" in final_url:
+            st.session_state["conexion_fallida"] = True
+            st.session_state["conexion_error_tipo"] = "google_login"
+            return None
+            
+        if response.status_code == 200:
+            if "html" in content_type:
                 st.session_state["conexion_fallida"] = True
                 st.session_state["conexion_error_tipo"] = "google_login"
                 return None
-            
-            # Si es el redireccionamiento correcto de Google Sheets, lo seguimos manualmente
-            if "googleusercontent.com" in location:
-                response_final = requests.get(location, timeout=15)
-                if response_final.status_code == 200:
-                    st.session_state["conexion_fallida"] = False
-                    st.session_state["conexion_error_tipo"] = None
-                    rows = response_final.json()
-                else:
-                    st.session_state["conexion_fallida"] = True
-                    st.session_state["conexion_error_tipo"] = "network_error"
-                    return None
-            else:
-                st.session_state["conexion_fallida"] = True
-                st.session_state["conexion_error_tipo"] = "network_error"
-                return None
-        
-        elif response.status_code == 200:
-            content_type = response.headers.get("Content-Type", "")
-            if "html" in content_type or "text/html" in content_type or "accounts.google" in response.url:
+            try:
+                rows = response.json()
+            except Exception:
                 st.session_state["conexion_fallida"] = True
                 st.session_state["conexion_error_tipo"] = "google_login"
                 return None
-            
+
             st.session_state["conexion_fallida"] = False
             st.session_state["conexion_error_tipo"] = None
-            rows = response.json()
         else:
             st.session_state["conexion_fallida"] = True
             st.session_state["conexion_error_tipo"] = "network_error"
