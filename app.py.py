@@ -1,11 +1,10 @@
 import base64
-import json
+import io
 import os
-import re
 import sqlite3
 import time
 from datetime import datetime, timedelta, timezone
-import requests
+from PIL import Image
 import streamlit as st
 
 # --- CONFIGURACIÓN DE PÁGINA MÓVIL Y LAPTOP ---
@@ -89,7 +88,38 @@ def reiniciar_caja_local():
     conn.commit()
     conn.close()
 
-# --- ESTILOS CSS ULTRA OPTIMIZADOS ---
+# --- FUNCIÓN BASE64 DE IMÁGENES ---
+def get_image_base64(producto):
+    lista = producto.get("alternativas", [producto["imagen"]])
+    carpetas = ["", "/workspace/artifacts", "/mount/src/conexi-n-sumac-v3", os.path.dirname(os.path.abspath(__file__))]
+    
+    ruta_encontrada = None
+    for alt in lista:
+        for carp in carpetas:
+            ruta = os.path.join(carp, alt) if carp else alt
+            if os.path.exists(ruta):
+                ruta_encontrada = ruta
+                break
+        if ruta_encontrada:
+            break
+            
+    if not ruta_encontrada:
+        return ""
+        
+    try:
+        img = Image.open(ruta_encontrada)
+        img.thumbnail((120, 120), Image.Resampling.LANCZOS)
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG", optimize=True)
+        return base64.b64encode(buffer.getvalue()).decode("utf-8")
+    except Exception:
+        try:
+            with open(ruta_encontrada, "rb") as f:
+                return base64.b64encode(f.read()).decode("utf-8")
+        except Exception:
+            return ""
+
+# --- ESTILOS CSS PERSONALIZADOS ---
 st.markdown("""
     <style>
     .main {
@@ -102,7 +132,7 @@ st.markdown("""
         border: 1px solid #37474F;
         border-radius: 12px;
         padding: 8px 12px;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: bold;
         width: 100%;
         box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
@@ -110,11 +140,6 @@ st.markdown("""
     div.stButton > button:first-child:active {
         background-color: #FFEA00 !important;
         color: #121212 !important;
-    }
-    [data-testid="stImage"] img {
-        border-radius: 12px !important;
-        border: 1px solid #37474F !important;
-        object-fit: cover !important;
     }
     .metric-box {
         background-color: #1E1E1E;
@@ -152,10 +177,9 @@ st.markdown("<h2 style='color: #FFFFFF; margin: 0; padding-top: 2px; font-size: 
 st.markdown("<p style='color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0;'>📍 Sicuani, Canchis • ⚡ POS Local Laptop</p>", unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Indicador de estado local permanente
 st.markdown("<div class='status-badge'>🟢 MODO LOCAL LAPTOP ACTIVO (Base de Datos Integrada • 100% Offline)</div>", unsafe_allow_html=True)
 
-# Cargar datos locales
+# Cargar datos
 datos = obtener_movimientos_hoy()
 
 # Lista de Productos
@@ -210,16 +234,6 @@ PRODUCTOS_INFO = [
     }
 ]
 
-def buscar_ruta_imagen_robusta(producto):
-    lista = producto.get("alternativas", [producto["imagen"]])
-    carpetas = ["", "/workspace/artifacts", "/mount/src/conexi-n-sumac-v3"]
-    for alt in lista:
-        for carp in carpetas:
-            ruta = os.path.join(carp, alt) if carp else alt
-            if os.path.exists(ruta):
-                return ruta
-    return None
-
 def contar_vendidos_hoy(nombre_base):
     total = 0
     for v in datos.get("ventas", []):
@@ -231,29 +245,59 @@ def contar_vendidos_hoy(nombre_base):
 tab_ventas, tab_gastos, tab_caja = st.tabs(["🛒 Registrar Ventas", "💸 Anotar Gastos", "💼 Ver Caja"])
 
 with tab_ventas:
-    st.markdown("<h4 style='color: #CFD8DC;'>Selecciona para vender:</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #CFD8DC;'>Toca la foto para vender:</h4>", unsafe_allow_html=True)
     
     for i, p in enumerate(PRODUCTOS_INFO):
         cant = contar_vendidos_hoy(p["nombre"])
         es_caldo = p.get("lleva_taper", False)
         icono = p.get("icono", "🍲")
+        b64_img = get_image_base64(p)
         
-        c_img, c_info, c_btn = st.columns([0.25, 0.45, 0.30])
+        c_img, c_info, c_btn = st.columns([0.30, 0.40, 0.30])
         
         with c_img:
-            ruta_img = buscar_ruta_imagen_robusta(p)
-            if ruta_img:
-                st.image(ruta_img, use_container_width=True)
-            else:
-                st.markdown(f"<div style='font-size: 36px; text-align: center;'>{icono}</div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div id="target-anchor-{i}"></div>
+            <style>
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button {{
+                background-image: url(data:image/png;base64,{b64_img}) !important;
+                background-color: #1E1E1E !important;
+                background-repeat: no-repeat !important;
+                background-size: cover !important;
+                background-position: center !important;
+                width: 85px !important;
+                height: 85px !important;
+                border-radius: 12px !important;
+                border: 2px solid #FFEA00 !important;
+                box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5) !important;
+                color: transparent !important;
+                transition: transform 0.15s ease !important;
+                margin: 0 auto !important;
+                display: block !important;
+            }}
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:hover {{
+                transform: scale(1.06) !important;
+                border-color: #00FF66 !important;
+            }}
+            div.element-container:has(#target-anchor-{i}) + div.element-container div[data-testid="stButton"] button:active {{
+                transform: scale(0.95) !important;
+            }}
+            </style>
+            """, unsafe_allow_html=True)
+            
+            if st.button("", key=f"btn_img_venda_{i}"):
+                if registrar_movimiento_local("VENTA", p["nombre"], p["precio"]):
+                    st.toast(f"🟢 {p['nombre']} (S/. {p['precio']:.2f}) registrado", icon=icono)
+                    st.rerun()
                 
         with c_info:
-            st.markdown(f"<div style='font-weight: bold; font-size: 13px; color: #FFFFFF;'>{icono} {p['nombre']}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='color: #FFEA00; font-weight: bold; font-size: 12px;'>S/. {p['precio']:.2f} <span style='color: #888888; font-weight: normal;'>(Hoy: {cant})</span></div>", unsafe_allow_html=True)
-            if st.button(f"🛒 Vender", key=f"btn_venda_{i}"):
-                if registrar_movimiento_local("VENTA", p["nombre"], p["precio"]):
-                    st.toast(f"🟢 {p['nombre']} registrado", icon=icono)
-                    st.rerun()
+            st.markdown(f"""
+            <div style='display: flex; flex-direction: column; justify-content: center; height: 85px;'>
+                <div style='font-weight: bold; font-size: 13px; color: #FFFFFF;'>{icono} {p['nombre']}</div>
+                <div style='color: #FFEA00; font-weight: bold; font-size: 14px; margin-top: 3px;'>S/. {p['precio']:.2f}</div>
+                <div style='color: #888888; font-size: 11px; margin-top: 2px;'>Vendido hoy: <b>{cant}</b></div>
+            </div>
+            """, unsafe_allow_html=True)
                     
         with c_btn:
             if es_caldo:
