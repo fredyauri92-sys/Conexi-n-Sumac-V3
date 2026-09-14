@@ -5,6 +5,7 @@ import re
 import sqlite3
 import time
 from datetime import datetime, timedelta, timezone
+import requests
 import streamlit as st
 
 # --- CONFIGURACIÓN DE PÁGINA MÓVIL Y LAPTOP ---
@@ -61,12 +62,20 @@ def obtener_movimientos_hoy():
     ventas = []
     compras = []
     for r in rows:
-        item = {"id": r[0], "fecha": r[1], "tipo": r[2], "detalle": r[3], "monto": r[4]}
-        if r[2] == "VENTA":
-            item["producto"] = r[3]
-            item["total"] = r[4]
+        m_id, m_fecha, m_tipo, m_detalle, m_monto = r
+        item = {
+            "id": m_id,
+            "fecha": m_fecha,
+            "tipo": m_tipo,
+            "detalle": m_detalle,
+            "monto": float(m_monto) if m_monto else 0.0
+        }
+        if m_tipo == "VENTA":
+            item["producto"] = m_detalle
+            item["total"] = float(m_monto) if m_monto else 0.0
             ventas.append(item)
-        elif r[2] == "GASTO":
+        elif m_tipo == "GASTO":
+            item["monto"] = float(m_monto) if m_monto else 0.0
             compras.append(item)
             
     return {"ventas": ventas, "compras": compras}
@@ -270,7 +279,7 @@ with tab_ventas:
         movimientos.reverse()
         for fecha, detalle, monto in movimientos[:15]:
             color_txt = "#00FF66" if "VENTA" in detalle else "#FF0055"
-            hora = fecha.split(" ")[1][:5] if " " in fecha else fecha
+            hora = fecha.split(" ")[1] if " " in fecha else fecha
             st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 8px 12px; border-radius: 8px; margin-bottom: 4px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-size: 12px; font-weight: bold;'>{detalle}</span><span style='color: {color_txt}; font-size: 12px; font-weight: bold;'>S/. {abs(monto):.2f} ({hora})</span></div>", unsafe_allow_html=True)
     else:
         st.info("No hay movimientos registrados hoy.")
