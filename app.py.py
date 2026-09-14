@@ -10,13 +10,13 @@ import streamlit as st
 
 # --- CONFIGURACIÓN DE PÁGINA MÓVIL PREMIUM ---
 st.set_page_config(
-    page_title="SUMAC POS Premium - Sicuani",
+    page_title="SUMAC POS - Sicuani",
     page_icon="🍲",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# --- ESTILOS CSS CYBER-ANDINO ---
+# --- ESTILOS CSS ULTRA OPTIMIZADOS ---
 st.markdown("""
     <style>
     .main {
@@ -27,42 +27,33 @@ st.markdown("""
         background-color: #1E1E1E;
         color: #FFFFFF;
         border: 1px solid #37474F;
-        border-radius: 15px;
-        padding: 10px;
+        border-radius: 12px;
+        padding: 8px 12px;
         font-size: 13px;
         font-weight: bold;
         width: 100%;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
-        transition: all 0.3s ease;
+        box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
     }
     div.stButton > button:first-child:active {
         background-color: #FFEA00 !important;
         color: #121212 !important;
-        border-color: #FFEA00 !important;
+    }
+    [data-testid="stImage"] img {
+        border-radius: 12px !important;
+        border: 1px solid #37474F !important;
+        object-fit: cover !important;
     }
     .metric-box {
         background-color: #1E1E1E;
-        padding: 15px;
-        border-radius: 15px;
+        padding: 12px;
+        border-radius: 12px;
         border: 1px solid #37474F;
         text-align: center;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
-    .metric-val-green {
-        color: #00FF66;
-        font-size: 22px;
-        font-weight: bold;
-    }
-    .metric-val-red {
-        color: #FF0055;
-        font-size: 22px;
-        font-weight: bold;
-    }
-    .metric-val-blue {
-        color: #2979FF;
-        font-size: 24px;
-        font-weight: bold;
-    }
+    .metric-val-green { color: #00FF66; font-size: 20px; font-weight: bold; }
+    .metric-val-red { color: #FF0055; font-size: 20px; font-weight: bold; }
+    .metric-val-blue { color: #2979FF; font-size: 22px; font-weight: bold; }
     .status-badge {
         background-color: #1B5E20;
         color: #00FF66;
@@ -71,24 +62,21 @@ st.markdown("""
         text-align: center;
         font-weight: bold;
         font-size: 11px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         border: 1px solid #00FF66;
     }
     [data-testid="stForm"] {
         border: 1px solid #37474F !important;
-        border-radius: 15px !important;
+        border-radius: 12px !important;
         background-color: #1E1E1E !important;
-        padding: 15px !important;
+        padding: 12px !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # --- ENCABEZADO Y TÍTULO ---
-col_logo, col_titulo = st.columns([0.45, 3.55])
-with col_titulo:
-    st.markdown("<h2 style='color: #FFFFFF; margin: 0; padding-top: 2px; font-size: 21px;'>🍜 CALDERÍA SUMAC</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0;'>📍 Sicuani, Canchis • ⚡</p>", unsafe_allow_html=True)
-
+st.markdown("<h2 style='color: #FFFFFF; margin: 0; padding-top: 2px; font-size: 22px;'>🍜 CALDERÍA SUMAC</h2>", unsafe_allow_html=True)
+st.markdown("<p style='color: #FFEA00; font-weight: bold; font-size: 11px; margin: 0;'>📍 Sicuani, Canchis • ⚡ POS Nube</p>", unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --- CONFIGURACIÓN DE BASE DE DATOS CENTRAL (GOOGLE SHEETS) ---
@@ -97,12 +85,12 @@ API_URL_DEFAULT = "https://script.google.com/macros/s/AKfycbzUtl0x9pMXbGK4IlQltZ
 if "api_url" not in st.session_state:
     st.session_state["api_url"] = API_URL_DEFAULT
 
-# Panel de Configuración en el Sidebar
+# Sidebar de Configuración
 with st.sidebar:
     st.markdown("### ⚙️ Conexión Consolidada")
-    st.markdown("Sincroniza todas las laptops y celulares a la misma base de datos central en la nube.")
+    st.markdown("Sincroniza laptops y celulares con Google Sheets.")
     url_input = st.text_input(
-        "Pegar Enlace de Google Sheets (Web App):",
+        "Enlace Google Sheets (Web App):",
         value=st.session_state.get("api_url", ""),
         placeholder="https://script.google.com/macros/s/.../exec"
     )
@@ -118,18 +106,16 @@ with st.sidebar:
             del st.session_state["datos_cache"]
         st.rerun()
 
-# Estado de conexión
 if "conexion_fallida" not in st.session_state:
     st.session_state["conexion_fallida"] = False
 
 # --- FUNCIONES DE RED Y DATOS ---
-def post_google_sheets(api_url, payload, timeout=12):
+def post_google_sheets(api_url, payload, timeout=10):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.post(api_url, json=payload, headers=headers, timeout=timeout, allow_redirects=True)
         if response and response.status_code == 200:
-            final_url = str(response.url).lower()
-            if "accounts.google" in final_url or "servicelogin" in final_url:
+            if "accounts.google" in str(response.url).lower():
                 return None
             return response
         return None
@@ -140,26 +126,18 @@ def cargar_datos_cloud():
     api_url = st.session_state.get("api_url", API_URL_DEFAULT)
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(api_url, headers=headers, timeout=10, allow_redirects=True)
-        final_url = str(response.url).lower()
-        
-        if "accounts.google" in final_url or "servicelogin" in final_url:
+        response = requests.get(api_url, headers=headers, timeout=8, allow_redirects=True)
+        if "accounts.google" in str(response.url).lower():
             st.session_state["conexion_fallida"] = True
             return None
 
         if response.status_code == 200:
-            content_type = str(response.headers.get("Content-Type", "")).lower()
-            if "html" in content_type:
+            if "html" in str(response.headers.get("Content-Type", "")).lower():
                 st.session_state["conexion_fallida"] = True
                 return None
-            try:
-                rows = response.json()
-            except Exception:
-                st.session_state["conexion_fallida"] = True
-                return None
-
+            rows = response.json()
             st.session_state["conexion_fallida"] = False
-            datos_formateados = {"ventas": [], "compras": [], "planilla": []}
+            datos_formateados = {"ventas": [], "compras": []}
             if isinstance(rows, list):
                 for row in rows:
                     if not isinstance(row, dict):
@@ -194,7 +172,7 @@ def cargar_datos_cloud():
 
 def enviar_a_sheets_bg(api_url, payload, item_id, tipo_mov):
     try:
-        response = post_google_sheets(api_url, payload, timeout=12)
+        response = post_google_sheets(api_url, payload, timeout=10)
         if response is not None and "datos_cache" in st.session_state:
             lista = st.session_state["datos_cache"]["ventas"] if tipo_mov == "VENTA" else st.session_state["datos_cache"]["compras"]
             for item in lista:
@@ -243,25 +221,38 @@ if "datos_cache" not in st.session_state:
         st.session_state["datos_cache"] = datos_nuevos
         st.session_state["conexion_fallida"] = False
     else:
-        st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
+        st.session_state["datos_cache"] = {"ventas": [], "compras": []}
 
 datos = st.session_state["datos_cache"]
 
-# --- MOSTRAR BADGE DE ESTADO ---
+# Badge de Estado
 if st.session_state.get("conexion_fallida", False):
-    st.markdown("<div class='status-badge' style='background-color: #721C24; color: #F8D7DA; border: 1px solid #F5C6CB;'>⚠️ TRABAJANDO EN MODO LOCAL (Sincronización pendiente)</div>", unsafe_allow_html=True)
+    st.markdown("<div class='status-badge' style='background-color: #721C24; color: #F8D7DA; border: 1px solid #F5C6CB;'>⚠️ TRABAJANDO EN MODO LOCAL</div>", unsafe_allow_html=True)
 else:
-    st.markdown("<div class='status-badge'>🟢 CONECTADO CON GOOGLE SHEETS (Sincronización activa)</div>", unsafe_allow_html=True)
+    st.markdown("<div class='status-badge'>🟢 CONECTADO CON GOOGLE SHEETS</div>", unsafe_allow_html=True)
 
-# Lista de Productos
+# Lista de Productos con imágenes locales
 PRODUCTOS_INFO = [
-    {"nombre": "Caldo sin presa", "precio": 5.0, "icono": "🍲", "lleva_taper": True},
-    {"nombre": "Caldo presa mediana", "precio": 8.0, "icono": "🍲", "lleva_taper": True},
-    {"nombre": "Caldo presa entera", "precio": 12.0, "icono": "🍲", "lleva_taper": True},
-    {"nombre": "Gaseosa personal", "precio": 3.0, "icono": "🥤", "lleva_taper": False},
-    {"nombre": "Gaseosa de 1 Litro", "precio": 6.0, "icono": "🍾", "lleva_taper": False},
-    {"nombre": "Agua mineral", "precio": 2.0, "icono": "💧", "lleva_taper": False}
+    {"nombre": "Caldo sin presa", "precio": 5.0, "icono": "🍲", "imagen": "caldo_sin_presa.png", "lleva_taper": True},
+    {"nombre": "Caldo presa mediana", "precio": 8.0, "icono": "🍲", "imagen": "caldo_presa_mediana.png", "lleva_taper": True},
+    {"nombre": "Caldo presa entera", "precio": 12.0, "icono": "🍲", "imagen": "caldo_presa_entera.png", "lleva_taper": True},
+    {"nombre": "Gaseosa personal", "precio": 3.0, "icono": "🥤", "imagen": "gaseosas_personales.png", "lleva_taper": False},
+    {"nombre": "Gaseosa de 1 Litro", "precio": 6.0, "icono": "🍾", "imagen": "gaseosas_litro.png", "lleva_taper": False},
+    {"nombre": "Agua mineral", "precio": 2.0, "icono": "💧", "imagen": "agua_san_luis.png", "lleva_taper": False}
 ]
+
+def buscar_ruta_imagen(nombre_archivo):
+    posibles = [
+        nombre_archivo,
+        f"gaseosa_peruana.png" if "personales" in nombre_archivo else nombre_archivo,
+        f"gaseosa_litro.png" if "litro" in nombre_archivo else nombre_archivo,
+        os.path.join("/workspace/artifacts", nombre_archivo),
+        os.path.join("/mount/src/conexi-n-sumac-v3", nombre_archivo)
+    ]
+    for r in posibles:
+        if os.path.exists(r):
+            return r
+    return None
 
 def contar_vendidos_hoy(nombre_base):
     total = 0
@@ -281,29 +272,35 @@ with tab_ventas:
         es_caldo = p.get("lleva_taper", False)
         icono = p.get("icono", "🍲")
         
-        col_prod, col_mods = st.columns([0.65, 0.35])
+        c_img, c_info, c_btn = st.columns([0.25, 0.45, 0.30])
         
-        with col_prod:
-            if st.button(f"{icono} {p['nombre']} - S/. {p['precio']:.2f} (Hoy: {cant})", key=f"btn_venda_{i}"):
+        with c_img:
+            ruta_img = buscar_ruta_imagen(p["imagen"])
+            if ruta_img:
+                st.image(ruta_img, use_container_width=True)
+            else:
+                st.markdown(f"<div style='font-size: 36px; text-align: center;'>{icono}</div>", unsafe_allow_html=True)
+                
+        with c_info:
+            st.markdown(f"<div style='font-weight: bold; font-size: 13px; color: #FFFFFF;'>{icono} {p['nombre']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='color: #FFEA00; font-weight: bold; font-size: 12px;'>S/. {p['precio']:.2f} <span style='color: #888888; font-weight: normal;'>(Hoy: {cant})</span></div>", unsafe_allow_html=True)
+            if st.button(f"🛒 Vender", key=f"btn_venda_{i}"):
                 if registrar_movimiento_instantaneo("VENTA", p["nombre"], p["precio"]):
-                    st.toast(f"🟢 Venta registrada: {p['nombre']}", icon=icono)
+                    st.toast(f"🟢 {p['nombre']} registrado", icon=icono)
                     st.rerun()
                     
-        with col_mods:
+        with c_btn:
             if es_caldo:
-                col_h, col_t = st.columns(2)
-                with col_h:
-                    if st.button("🥚 S/.1", key=f"btn_huevo_{i}"):
-                        if registrar_movimiento_instantaneo("VENTA", f"{p['nombre']} (+1 huevo)", 1.0):
-                            st.toast("🥚 Huevo registrado", icon="🥚")
-                            st.rerun()
-                with col_t:
-                    if st.button("🥃 S/.1", key=f"btn_taper_{i}"):
-                        if registrar_movimiento_instantaneo("VENTA", f"{p['nombre']} (en táper)", 1.0):
-                            st.toast("🥃 Táper registrado", icon="🥃")
-                            st.rerun()
+                if st.button("🥚 Huevo (+S/.1)", key=f"btn_huevo_{i}"):
+                    if registrar_movimiento_instantaneo("VENTA", f"{p['nombre']} (+1 huevo)", 1.0):
+                        st.toast("🥚 Huevo extra registrado", icon="🥚")
+                        st.rerun()
+                if st.button("🥃 Táper (+S/.1)", key=f"btn_taper_{i}"):
+                    if registrar_movimiento_instantaneo("VENTA", f"{p['nombre']} (en táper)", 1.0):
+                        st.toast("🥃 Táper registrado", icon="🥃")
+                        st.rerun()
 
-        st.markdown("<div style='border-bottom: 1px solid #222222; margin: 5px 0;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='border-bottom: 1px solid #222222; margin: 8px 0;'></div>", unsafe_allow_html=True)
 
     st.markdown("<br><h5 style='color: #CFD8DC;'>📝 Últimos movimientos del turno:</h5>", unsafe_allow_html=True)
     movimientos = []
@@ -316,9 +313,9 @@ with tab_ventas:
         
     if movimientos:
         movimientos.reverse()
-        for fecha, detalle, monto in movimientos[:15]:
+        for fecha, detalle, monto in movimientos[:12]:
             color_txt = "#00FF66" if "VENTA" in detalle else "#FF0055"
-            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-weight: bold;'>{detalle}</span><span style='color: {color_txt}; font-weight: bold;'>S/. {abs(monto):.2f}</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 8px 12px; border-radius: 8px; margin-bottom: 4px; border-left: 4px solid {color_txt};'><span style='color: #FFFFFF; font-size: 12px; font-weight: bold;'>{detalle}</span><span style='color: {color_txt}; font-size: 12px; font-weight: bold;'>S/. {abs(monto):.2f}</span></div>", unsafe_allow_html=True)
     else:
         st.info("No hay movimientos registrados hoy.")
 
@@ -341,7 +338,7 @@ with tab_gastos:
     st.markdown("<br><h5 style='color: #CFD8DC;'>📋 Gastos de hoy:</h5>", unsafe_allow_html=True)
     if datos.get("compras"):
         for g in reversed(datos["compras"]):
-            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #FF0055;'><span style='color: #FFEA00; font-weight: bold;'>• {g['detalle']}</span><span style='color: #FF0055; font-weight: bold;'>S/. {g['monto']:.2f}</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='display: flex; justify-content: space-between; background: #1E1E1E; padding: 8px 12px; border-radius: 8px; margin-bottom: 4px; border-left: 4px solid #FF0055;'><span style='color: #FFEA00; font-size: 12px; font-weight: bold;'>• {g['detalle']}</span><span style='color: #FF0055; font-size: 12px; font-weight: bold;'>S/. {g['monto']:.2f}</span></div>", unsafe_allow_html=True)
     else:
         st.info("No hay gastos registrados hoy.")
 
@@ -369,7 +366,6 @@ with tab_caja:
         
     st.markdown(f"<div class='metric-box' style='background: #252525;'>GANANCIA NETA<br><span class='metric-val-blue' style='color: {'#00FF66' if ganancia >= 0 else '#FF0055'}'>S/. {ganancia:.2f}</span></div>", unsafe_allow_html=True)
 
-    # Zona de seguridad
     st.markdown("---")
     st.markdown("<h5 style='color: #FF0055;'>🧹 Zona de Seguridad</h5>", unsafe_allow_html=True)
     clave_caja = st.text_input("Contraseña:", type="password", key="clave_caja_web")
@@ -378,9 +374,9 @@ with tab_caja:
             api_url = st.session_state["api_url"]
             try:
                 payload = {"action": "reiniciar"}
-                response = post_google_sheets(api_url, payload, timeout=12)
+                response = post_google_sheets(api_url, payload, timeout=10)
                 if response and response.status_code == 200:
-                    st.session_state["datos_cache"] = {"ventas": [], "compras": [], "planilla": []}
+                    st.session_state["datos_cache"] = {"ventas": [], "compras": []}
                     st.success("¡Base de datos borrada con éxito!")
                     st.rerun()
             except Exception as e:
