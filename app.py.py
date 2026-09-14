@@ -227,31 +227,70 @@ datos = st.session_state["datos_cache"]
 
 # Badge de Estado
 if st.session_state.get("conexion_fallida", False):
-    st.markdown("<div class='status-badge' style='background-color: #721C24; color: #F8D7DA; border: 1px solid #F5C6CB;'>⚠️ TRABAJANDO EN MODO LOCAL</div>", unsafe_allow_html=True)
+    st.markdown("<div class='status-badge' style='background-color: #721C24; color: #F8D7DA; border: 1px solid #F5C6CB;'>⚠️ TRABAJANDO EN MODO LOCAL (Sincronización pendiente - Configura tu URL en el menú lateral)</div>", unsafe_allow_html=True)
 else:
     st.markdown("<div class='status-badge'>🟢 CONECTADO CON GOOGLE SHEETS</div>", unsafe_allow_html=True)
 
-# Lista de Productos con imágenes locales
+# Lista de Productos con soporte para nombres alternativos de imágenes
 PRODUCTOS_INFO = [
-    {"nombre": "Caldo sin presa", "precio": 5.0, "icono": "🍲", "imagen": "caldo_sin_presa.png", "lleva_taper": True},
-    {"nombre": "Caldo presa mediana", "precio": 8.0, "icono": "🍲", "imagen": "caldo_presa_mediana.png", "lleva_taper": True},
-    {"nombre": "Caldo presa entera", "precio": 12.0, "icono": "🍲", "imagen": "caldo_presa_entera.png", "lleva_taper": True},
-    {"nombre": "Gaseosa personal", "precio": 3.0, "icono": "🥤", "imagen": "gaseosas_personales.png", "lleva_taper": False},
-    {"nombre": "Gaseosa de 1 Litro", "precio": 6.0, "icono": "🍾", "imagen": "gaseosas_litro.png", "lleva_taper": False},
-    {"nombre": "Agua mineral", "precio": 2.0, "icono": "💧", "imagen": "agua_san_luis.png", "lleva_taper": False}
+    {
+        "nombre": "Caldo sin presa",
+        "precio": 5.0,
+        "icono": "🍲",
+        "imagen": "caldo_sin_presa.png",
+        "alternativas": ["caldo_sin_presa.png"],
+        "lleva_taper": True
+    },
+    {
+        "nombre": "Caldo presa mediana",
+        "precio": 8.0,
+        "icono": "🍲",
+        "imagen": "caldo_presa_mediana.png",
+        "alternativas": ["caldo_sicuani.png", "caldo_presa_mediana.png"],
+        "lleva_taper": True
+    },
+    {
+        "nombre": "Caldo presa entera",
+        "precio": 12.0,
+        "icono": "🍲",
+        "imagen": "caldo_presa_entera.png",
+        "alternativas": ["caldo_presa_grande.png", "caldo_presa_entera.png"],
+        "lleva_taper": True
+    },
+    {
+        "nombre": "Gaseosa personal",
+        "precio": 3.0,
+        "icono": "🥤",
+        "imagen": "gaseosas_personales.png",
+        "alternativas": ["gaseosas_personales.png", "gaseosa_peruana.png"],
+        "lleva_taper": False
+    },
+    {
+        "nombre": "Gaseosa de 1 Litro",
+        "precio": 6.0,
+        "icono": "🍾",
+        "imagen": "gaseosas_litro.png",
+        "alternativas": ["gaseosas_litro.png", "gaseosa_litro.png"],
+        "lleva_taper": False
+    },
+    {
+        "nombre": "Agua mineral",
+        "precio": 2.0,
+        "icono": "💧",
+        "imagen": "agua_san_luis.png",
+        "alternativas": ["agua_san_luis.png"],
+        "lleva_taper": False
+    }
 ]
 
-def buscar_ruta_imagen(nombre_archivo):
-    posibles = [
-        nombre_archivo,
-        f"gaseosa_peruana.png" if "personales" in nombre_archivo else nombre_archivo,
-        f"gaseosa_litro.png" if "litro" in nombre_archivo else nombre_archivo,
-        os.path.join("/workspace/artifacts", nombre_archivo),
-        os.path.join("/mount/src/conexi-n-sumac-v3", nombre_archivo)
-    ]
-    for r in posibles:
-        if os.path.exists(r):
-            return r
+def buscar_ruta_imagen_robusta(producto):
+    lista = producto.get("alternativas", [producto["imagen"]])
+    carpetas = ["", "/workspace/artifacts", "/mount/src/conexi-n-sumac-v3"]
+    for alt in lista:
+        for carp in carpetas:
+            ruta = os.path.join(carp, alt) if carp else alt
+            if os.path.exists(ruta):
+                return ruta
     return None
 
 def contar_vendidos_hoy(nombre_base):
@@ -275,7 +314,7 @@ with tab_ventas:
         c_img, c_info, c_btn = st.columns([0.25, 0.45, 0.30])
         
         with c_img:
-            ruta_img = buscar_ruta_imagen(p["imagen"])
+            ruta_img = buscar_ruta_imagen_robusta(p)
             if ruta_img:
                 st.image(ruta_img, use_container_width=True)
             else:
